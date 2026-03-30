@@ -1,4 +1,5 @@
 venv/
+_static/images/
 __pycache__/
 *.pyc
 *.pyo
@@ -9,3 +10,4 @@ _static_root/
 *.egg-info/
 .DS_Store
 *.db
+*.numbers

@@ -1,0 +1,298 @@
+{{ block title }}Image Labelling Task{{ endblock }}
+
+{{ block content }}
+<div class="container-fluid mt-3">
+
+  <!-- ── Timer bar ─────────────────────────────────────────── -->
+  <div class="row mb-3">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <span class="text-muted small">Image selection task</span>
+        <span class="badge bg-secondary px-3 py-2 fs-6">
+          Time remaining:&nbsp;<span id="timer-display" class="font-monospace">--:--</span>
+        </span>
+      </div>
+      <div class="progress mt-1" style="height: 5px;">
+        <div id="timer-bar" class="progress-bar bg-success" style="width:100%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Task card ─────────────────────────────────────────── -->
+  <div id="task-card" class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+      <div class="card shadow-sm">
+
+        <!-- Question -->
+        <div class="card-header bg-light py-3">
+          <p id="question-text" class="lead mb-0 text-center fw-semibold">—</p>
+        </div>
+
+        <!-- Image + grid overlay -->
+        <div class="card-body p-0" style="background: #eee;">
+
+          <!-- Spinner (normal-flow, shown while image loads) -->
+          <div id="img-spinner"
+               class="flex-column align-items-center justify-content-center text-muted"
+               style="min-height: 300px; display: flex;">
+            <div class="spinner-border text-secondary mb-2" role="status"></div>
+            <p class="mb-0">Loading image…</p>
+          </div>
+
+          <!--
+            Stacking container: image + overlays share one CSS-grid cell.
+            The img (align-self:start) determines the cell height;
+            the overlays (align-self:stretch) fill that height automatically —
+            no JS sizing needed.
+          -->
+          <div id="image-stack"
+               style="display:none; grid-template-areas:'stack'; line-height:0;">
+
+            <img id="captcha-image"
+                 src=""
+                 alt="Task image"
+                 style="grid-area:stack; align-self:start; width:100%; height:auto;
+                        display:block; cursor:default;">
+
+            <!-- 3×3 grid overlay -->
+            <div id="grid-overlay"
+                 style="grid-area:stack; align-self:stretch; justify-self:stretch;
+                        display:none;
+                        grid-template-columns:repeat(3,1fr);
+                        grid-template-rows:repeat(3,1fr);">
+              <div class="grid-cell" data-cell="0"></div>
+              <div class="grid-cell" data-cell="1"></div>
+              <div class="grid-cell" data-cell="2"></div>
+              <div class="grid-cell" data-cell="3"></div>
+              <div class="grid-cell" data-cell="4"></div>
+              <div class="grid-cell" data-cell="5"></div>
+              <div class="grid-cell" data-cell="6"></div>
+              <div class="grid-cell" data-cell="7"></div>
+              <div class="grid-cell" data-cell="8"></div>
+            </div>
+
+            <!-- Feedback overlay (shown briefly after each submission) -->
+            <div id="feedback-overlay"
+                 style="grid-area:stack; align-self:stretch; justify-self:stretch;
+                        display:none; align-items:center; justify-content:center;
+                        font-size:5rem; pointer-events:none;">
+            </div>
+
+          </div><!-- /image-stack -->
+        </div><!-- /card-body -->
+
+        <!-- Submit + progress footer -->
+        <div class="card-footer">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span class="text-muted small">
+              Click cells to select, click again to deselect.
+              Image <span id="img-counter">—</span>
+            </span>
+            <button id="submit-btn"
+                    class="btn btn-primary px-4"
+                    onclick="submitAnswer()"
+                    disabled>
+              Submit selection
+            </button>
+          </div>
+        </div>
+
+      </div><!-- /card -->
+    </div>
+  </div>
+
+  <!-- ── Pool-exhausted notice ──────────────────────────────── -->
+  <div id="pool-exhausted" class="row justify-content-center" style="display:none!important;">
+    <div class="col-12 col-lg-8">
+      <div class="alert alert-success mt-3">
+        <h5 class="alert-heading">All images completed!</h5>
+        <p class="mb-0">The session will end automatically when the timer reaches zero.</p>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container-fluid -->
+
+<style>
+.grid-cell {
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+  box-sizing: border-box;
+}
+.grid-cell:hover {
+  background-color: rgba(255, 255, 255, 0.18);
+}
+.grid-cell.selected {
+  background-color: rgba(37, 99, 235, 0.42);
+  border-color: rgba(37, 99, 235, 0.85);
+}
+.grid-cell.correct-highlight {
+  background-color: rgba(22, 163, 74, 0.55);
+  border-color: rgba(22, 163, 74, 0.9);
+}
+</style>
+
+<script>
+/* ── State ───────────────────────────────────────────────── */
+var TASK_DURATION = {{ duration_seconds }};
+var timeRemaining = TASK_DURATION;
+var timerStarted  = false;
+var imageShownAt  = null;
+
+/* ── Timer ───────────────────────────────────────────────── */
+function fmt(s) {
+  var m = Math.floor(s / 60), sec = s % 60;
+  return m + ':' + (sec < 10 ? '0' : '') + sec;
+}
+
+function startTimer() {
+  if (timerStarted) return;
+  timerStarted = true;
+  var display = document.getElementById('timer-display');
+  var bar     = document.getElementById('timer-bar');
+  display.textContent = fmt(timeRemaining);
+  var iv = setInterval(function () {
+    if (timeRemaining > 0) timeRemaining--;
+    display.textContent = fmt(timeRemaining);
+    var pct = timeRemaining / TASK_DURATION * 100;
+    bar.style.width = pct + '%';
+    bar.className = 'progress-bar ' +
+      (pct > 20 ? 'bg-success' : pct > 10 ? 'bg-warning' : 'bg-danger');
+    if (timeRemaining === 0) clearInterval(iv);
+  }, 1000);
+}
+
+/* ── Grid helpers ────────────────────────────────────────── */
+function clearSelections() {
+  document.querySelectorAll('.grid-cell').forEach(function (c) {
+    c.classList.remove('selected', 'correct-highlight');
+  });
+}
+
+function highlightCells(cells, cls) {
+  cells.forEach(function (n) {
+    var cell = document.querySelector('.grid-cell[data-cell="' + n + '"]');
+    if (cell) cell.classList.add(cls);
+  });
+}
+
+/* ── Show image ──────────────────────────────────────────── */
+function showImage(data) {
+  var img     = document.getElementById('captcha-image');
+  var spinner = document.getElementById('img-spinner');
+  var stack   = document.getElementById('image-stack');
+  var overlay = document.getElementById('grid-overlay');
+  var qText   = document.getElementById('question-text');
+  var btn     = document.getElementById('submit-btn');
+  var counter = document.getElementById('img-counter');
+
+  // Reset
+  stack.style.display   = 'none';
+  overlay.style.display = 'none';
+  spinner.style.display = 'flex';
+  btn.disabled = true;
+  clearSelections();
+  img.onload  = null;
+  img.onerror = null;
+
+  var fired = false;
+  function onReady() {
+    if (fired) return;
+    fired = true;
+    spinner.style.display = 'none';
+    stack.style.display   = 'grid';   // CSS grid stacking — no JS sizing needed
+    overlay.style.display = 'grid';
+    btn.disabled = false;
+    startTimer();
+    imageShownAt = Date.now();
+  }
+
+  img.onload  = onReady;
+  img.onerror = function () {
+    spinner.innerHTML = '<p class="text-danger small mb-0">Could not load: <code>' +
+      data.filename + '</code></p>';
+    startTimer();
+  };
+  img.src = '/static/images/' + data.filename;
+  if (img.complete && img.naturalWidth > 0) { onReady(); }
+
+  qText.textContent = data.question;
+  counter.textContent = (data.index + 1) + ' / ' + data.total;
+}
+
+/* ── Submit ──────────────────────────────────────────────── */
+function submitAnswer() {
+  var selected = [];
+  document.querySelectorAll('.grid-cell.selected').forEach(function (c) {
+    selected.push(parseInt(c.dataset.cell));
+  });
+  selected.sort(function (a, b) { return a - b; });
+
+  if (selected.length === 0) {
+    alert('Please select at least one cell before submitting.');
+    return;
+  }
+
+  document.getElementById('submit-btn').disabled = true;
+  document.querySelectorAll('.grid-cell').forEach(function (c) {
+    c.style.pointerEvents = 'none';
+  });
+
+  liveSend({
+    type: 'submit_answer',
+    selected_cells: selected,
+    response_time_ms: imageShownAt ? Date.now() - imageShownAt : 0,
+  });
+}
+
+/* ── Receive feedback from server ────────────────────────── */
+function liveRecv(data) {
+  if (data.type === 'feedback') {
+    var fbOverlay = document.getElementById('feedback-overlay');
+
+    highlightCells(data.correct_cells, 'correct-highlight');
+
+    fbOverlay.textContent    = data.is_correct ? '✓' : '✗';
+    fbOverlay.style.color    = data.is_correct ? 'rgba(22,163,74,0.9)' : 'rgba(220,38,38,0.9)';
+    fbOverlay.style.display  = 'flex';
+
+    setTimeout(function () {
+      fbOverlay.style.display = 'none';
+      if (data.next_image && data.next_image.filename) {
+        showImage(data.next_image);
+        document.querySelectorAll('.grid-cell').forEach(function (c) {
+          c.style.pointerEvents = '';
+        });
+      } else {
+        document.getElementById('task-card').style.display = 'none';
+        document.getElementById('pool-exhausted').style.removeProperty('display');
+      }
+    }, 1200);
+  }
+}
+
+/* ── Cell click toggle ───────────────────────────────────── */
+document.querySelectorAll('.grid-cell').forEach(function (cell) {
+  cell.addEventListener('click', function () {
+    this.classList.toggle('selected');
+  });
+});
+
+/* ── Keyboard shortcut: Ctrl/Cmd + Enter ────────────────── */
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    var btn = document.getElementById('submit-btn');
+    if (!btn.disabled) submitAnswer();
+  }
+});
+
+/* ── Init: first image injected via js_vars ──────────────── */
+document.addEventListener('DOMContentLoaded', function () {
+  var first = js_vars.first_image;
+  if (first && first.filename) {
+    showImage(first);
+  }
+});
+</script>
+{{ endblock }}

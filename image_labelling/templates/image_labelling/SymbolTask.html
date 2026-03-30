@@ -1,0 +1,450 @@
+{{ block title }}Symbol Search Task{{ endblock }}
+
+{{ block content }}
+<div class="container-fluid mt-3">
+
+  <!-- ── Session timer ─────────────────────────────────────── -->
+  <div class="row mb-3">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <span class="text-muted small">Symbol search task</span>
+        <span class="badge bg-secondary px-3 py-2 fs-6">
+          Time remaining:&nbsp;<span id="timer-display" class="font-monospace">--:--</span>
+        </span>
+      </div>
+      <div class="progress mt-1" style="height:5px;">
+        <div id="timer-bar" class="progress-bar bg-success" style="width:100%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Phase 1: Image viewing ─────────────────────────────── -->
+  <div id="phase-1" class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+      <div class="card shadow-sm">
+
+        <div class="card-header bg-light py-3">
+          <p class="lead mb-0 text-center fw-semibold">
+            Study this image — you will answer a question about it from memory.
+          </p>
+        </div>
+
+        <div class="card-body p-0" style="background:#eee;">
+          <div id="img-spinner"
+               style="min-height:280px; display:flex; flex-direction:column;
+                      align-items:center; justify-content:center;" class="text-muted">
+            <div class="spinner-border text-secondary mb-2" role="status"></div>
+            <p class="mb-0">Loading image…</p>
+          </div>
+          <img id="task-image" src="" alt="Task image"
+               style="width:100%; height:auto; display:none;">
+        </div>
+
+        <div class="card-footer">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div style="flex:1; min-width:0;">
+              <div class="text-muted small fw-semibold mb-1">Question you will be asked:</div>
+              <div id="question-preview" class="fw-semibold text-dark">—</div>
+              <div class="text-muted small mt-2">Image <span id="img-counter">—</span></div>
+            </div>
+            <div class="text-center flex-shrink-0">
+              <div class="text-muted small">Study time</div>
+              <div class="font-monospace fw-bold fs-4 text-warning"
+                   id="viewing-countdown">8</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div><!-- /phase-1 -->
+
+  <!-- ── Phase 2: Symbol search ─────────────────────────────── -->
+  <div id="phase-2" class="row justify-content-center" style="display:none;">
+    <div class="col-12 col-lg-9">
+      <div class="card shadow-sm">
+
+        <div class="card-header py-3">
+          <div class="d-flex align-items-center justify-content-center flex-wrap gap-3">
+            <span class="fw-semibold">Find all instances of:</span>
+            <div id="target-symbol-display"
+                 style="width:60px; height:60px; background:#f8f9fa; border:2px solid #dee2e6;
+                        border-radius:8px; padding:6px; flex-shrink:0; display:flex;
+                        align-items:center; justify-content:center;">
+            </div>
+            <span class="text-muted small">Click every matching cell — select all of them and no others.</span>
+          </div>
+        </div>
+
+        <div class="card-body px-3 py-3">
+          <div id="symbol-grid"
+               style="display:grid; grid-template-columns:repeat(7,1fr); gap:5px;">
+          </div>
+          <div id="symbol-error"
+               style="display:none; margin-top:10px;"
+               class="alert alert-danger py-2 mb-0 text-center small fw-semibold">
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="text-muted small">
+              Selected: <span id="selected-count">0</span>
+            </span>
+            <button id="submit-symbol-btn"
+                    type="button"
+                    class="btn btn-primary px-4"
+                    onclick="submitSymbol()">
+              Check →
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div><!-- /phase-2 -->
+
+  <!-- ── Phase 3: Answer question ───────────────────────────── -->
+  <div id="phase-3" class="row justify-content-center" style="display:none;">
+    <div class="col-12 col-lg-6">
+      <div class="card shadow-sm">
+
+        <div class="card-header bg-light py-3">
+          <p id="answer-question" class="lead mb-0 text-center fw-semibold">—</p>
+        </div>
+
+        <div class="card-body py-4">
+          <div id="answer-options" class="d-grid gap-2">
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div><!-- /phase-3 -->
+
+  <!-- ── Pool exhausted ────────────────────────────────────── -->
+  <div id="pool-exhausted" class="row justify-content-center" style="display:none!important;">
+    <div class="col-12 col-lg-8">
+      <div class="alert alert-success mt-3">
+        <h5 class="alert-heading">All images completed!</h5>
+        <p class="mb-0">The session will end automatically when the timer reaches zero.</p>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container-fluid -->
+
+<!-- ── Full-screen feedback overlay ──────────────────────── -->
+<div id="feedback-overlay"
+     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65);
+            z-index:1050; align-items:center; justify-content:center; flex-direction:column;">
+  <div id="feedback-icon" style="font-size:6rem; line-height:1;"></div>
+  <div id="feedback-text"
+       style="color:#fff; font-size:1.25rem; font-weight:600; margin-top:1rem;
+              text-align:center; max-width:440px; padding:0 1.5rem;">
+  </div>
+</div>
+
+<style>
+.sym-cell {
+  aspect-ratio: 1;
+  background: #fff;
+  border: 2px solid #dee2e6;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.07s, border-color 0.07s;
+  color: #333;
+}
+.sym-cell:hover            { border-color: #94a3b8; background: #f8fafc; }
+.sym-cell.selected         { background: #2563eb; border-color: #1d4ed8; color: #fff; }
+.sym-cell.selected:hover   { background: #1d4ed8; }
+.sym-cell.flash-wrong      { animation: flash-red 0.5s ease; }
+@keyframes flash-red {
+  0%,100% { border-color: #dee2e6; }
+  50%     { border-color: #ef4444; background: #fee2e2; color: #333; }
+}
+
+.answer-btn {
+  padding: 0.8rem 1.25rem;
+  font-size: 1rem;
+  text-align: left;
+  width: 100%;
+  background: #f8f9fa;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+.answer-btn:hover:not(:disabled) { background: #e9ecef; border-color: #adb5bd; }
+.answer-btn:disabled { opacity: 0.55; cursor: default; }
+</style>
+
+<script>
+/* ── Constants ───────────────────────────────────────────── */
+var TASK_DURATION    = {{ duration_seconds }};
+var VIEWING_SECONDS  = js_vars.viewing_seconds || 8;
+var NUM_SYMBOL_TYPES = 8;
+
+/* ── 8 symbol SVG paths (40×40 viewBox, stroke-only) ─────── *
+ *  Confusable pairs: (0,1) circles, (2,3) square/diamond,
+ *  (4,5) triangles, (6,7) plus/X                             */
+var SYMBOL_PATHS = [
+  /* 0 circle plain  */ '<circle cx="20" cy="20" r="13" fill="none" stroke="currentColor" stroke-width="2.5"/>',
+  /* 1 circle + dot  */ '<circle cx="20" cy="20" r="13" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="20" cy="20" r="3.5" fill="currentColor"/>',
+  /* 2 square        */ '<rect x="7" y="7" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.5"/>',
+  /* 3 diamond       */ '<polygon points="20,5 35,20 20,35 5,20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>',
+  /* 4 triangle up   */ '<polygon points="20,5 34,34 6,34" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>',
+  /* 5 triangle down */ '<polygon points="20,35 6,6 34,6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>',
+  /* 6 plus          */ '<line x1="20" y1="5" x2="20" y2="35" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><line x1="5" y1="20" x2="35" y2="20" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>',
+  /* 7 X             */ '<line x1="7" y1="7" x2="33" y2="33" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><line x1="33" y1="7" x2="7" y2="33" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>',
+];
+
+function makeSvg(idx, size) {
+  return '<svg viewBox="0 0 40 40" width="' + size + '" height="' + size +
+         '" aria-hidden="true">' + SYMBOL_PATHS[idx] + '</svg>';
+}
+
+/* ── Session timer ───────────────────────────────────────── */
+var timeRemaining = TASK_DURATION;
+var timerStarted  = false;
+
+function fmt(s) {
+  var m = Math.floor(s / 60), sec = s % 60;
+  return m + ':' + (sec < 10 ? '0' : '') + sec;
+}
+function startTimer() {
+  if (timerStarted) return;
+  timerStarted = true;
+  var display = document.getElementById('timer-display');
+  var bar     = document.getElementById('timer-bar');
+  display.textContent = fmt(timeRemaining);
+  var iv = setInterval(function () {
+    if (timeRemaining > 0) timeRemaining--;
+    display.textContent = fmt(timeRemaining);
+    var pct = timeRemaining / TASK_DURATION * 100;
+    bar.style.width = pct + '%';
+    bar.className = 'progress-bar ' +
+      (pct > 20 ? 'bg-success' : pct > 10 ? 'bg-warning' : 'bg-danger');
+    if (timeRemaining === 0) clearInterval(iv);
+  }, 1000);
+}
+
+/* ── State ───────────────────────────────────────────────── */
+var currentData     = null;
+var selectedCells   = [];
+var symbolStartedAt = null;
+var answerStartedAt = null;
+var viewingInterval = null;
+
+/* ── Phase 1: Show image ─────────────────────────────────── */
+function showImage(data) {
+  currentData   = data;
+  selectedCells = [];
+
+  document.getElementById('phase-1').style.display = '';
+  document.getElementById('phase-2').style.display = 'none';
+  document.getElementById('phase-3').style.display = 'none';
+
+  var img     = document.getElementById('task-image');
+  var spinner = document.getElementById('img-spinner');
+
+  spinner.style.display = 'flex';
+  img.style.display     = 'none';
+  img.onload = img.onerror = null;
+
+  document.getElementById('question-preview').textContent = data.question || '—';
+  document.getElementById('img-counter').textContent =
+    (data.index + 1) + ' / ' + data.total;
+
+  var fired = false;
+  function onReady() {
+    if (fired) return;
+    fired = true;
+    spinner.style.display = 'none';
+    img.style.display     = 'block';
+    startTimer();
+    startViewingCountdown();  // countdown starts only once image is visible
+  }
+  img.onload  = onReady;
+  img.onerror = function () {
+    spinner.innerHTML = '<p class="text-danger small mb-0 p-3">Could not load: <code>' +
+      data.filename + '</code></p>';
+    startTimer();
+    startViewingCountdown();
+  };
+  img.src = '/static/images/' + data.filename;
+  if (img.complete && img.naturalWidth > 0) { onReady(); }
+}
+
+/* ── Viewing countdown — binding, auto-advances ──────────── */
+function startViewingCountdown() {
+  clearInterval(viewingInterval);
+  var remaining = VIEWING_SECONDS;
+  var span      = document.getElementById('viewing-countdown');
+  span.textContent = remaining;
+  span.style.color = '';
+  viewingInterval = setInterval(function () {
+    remaining--;
+    span.textContent = Math.max(0, remaining);
+    if (remaining <= 3) span.style.color = '#dc2626';  // red flash for last 3s
+    if (remaining <= 0) {
+      clearInterval(viewingInterval);
+      startSymbolPhase();   // auto-advance — no button needed
+    }
+  }, 1000);
+}
+
+/* ── Phase 2: Build symbol grid ──────────────────────────── */
+function startSymbolPhase() {
+  document.getElementById('phase-1').style.display = 'none';
+  document.getElementById('phase-2').style.display = '';
+  document.getElementById('symbol-error').style.display = 'none';
+
+  symbolStartedAt = Date.now();
+  selectedCells   = [];
+  document.getElementById('selected-count').textContent = '0';
+
+  document.getElementById('target-symbol-display').innerHTML =
+    makeSvg(currentData.target_symbol, 44);
+
+  var grid = document.getElementById('symbol-grid');
+  grid.innerHTML = '';
+  currentData.symbol_grid.forEach(function (symIdx, cellIdx) {
+    var cell = document.createElement('div');
+    cell.className = 'sym-cell';
+    cell.dataset.idx = cellIdx;
+    cell.innerHTML = makeSvg(symIdx, 24);
+    cell.addEventListener('click', function () {
+      var i   = parseInt(this.dataset.idx);
+      var pos = selectedCells.indexOf(i);
+      if (pos === -1) {
+        selectedCells.push(i);
+        this.classList.add('selected');
+      } else {
+        selectedCells.splice(pos, 1);
+        this.classList.remove('selected');
+      }
+      document.getElementById('selected-count').textContent = selectedCells.length;
+      document.getElementById('symbol-error').style.display = 'none';
+    });
+    grid.appendChild(cell);
+  });
+}
+
+/* ── Symbol validation: must match exactly ───────────────── */
+function submitSymbol() {
+  var clicked = selectedCells.slice().sort(function (a, b) { return a - b; });
+  var target  = currentData.target_cells.slice().sort(function (a, b) { return a - b; });
+
+  if (JSON.stringify(clicked) !== JSON.stringify(target)) {
+    // Wrong — show error, flash incorrect cells, clear and retry
+    var errDiv = document.getElementById('symbol-error');
+    var nMissed = target.filter(function(i){ return clicked.indexOf(i) === -1; }).length;
+    var nExtra  = clicked.filter(function(i){ return target.indexOf(i) === -1; }).length;
+    errDiv.textContent = 'Not quite right — clear your selection and try again.';
+    if (nMissed > 0 && nExtra === 0) {
+      errDiv.textContent = 'You missed some — clear your selection and try again.';
+    } else if (nExtra > 0 && nMissed === 0) {
+      errDiv.textContent = 'You selected too many — clear your selection and try again.';
+    }
+    errDiv.style.display = 'block';
+
+    // Flash wrong cells and clear
+    var cells = document.querySelectorAll('.sym-cell');
+    clicked.forEach(function (i) {
+      if (target.indexOf(i) === -1) {
+        cells[i].classList.add('flash-wrong');
+        setTimeout(function () { cells[i].classList.remove('flash-wrong'); }, 600);
+      }
+    });
+    // Clear selection
+    selectedCells = [];
+    cells.forEach(function (c) { c.classList.remove('selected'); });
+    document.getElementById('selected-count').textContent = '0';
+    return;
+  }
+
+  // Correct symbol selection — advance to answer phase
+  document.getElementById('symbol-error').style.display = 'none';
+  document.getElementById('phase-2').style.display = 'none';
+  document.getElementById('phase-3').style.display = '';
+
+  answerStartedAt = Date.now();
+  document.getElementById('answer-question').textContent = currentData.question;
+
+  var container = document.getElementById('answer-options');
+  container.innerHTML = '';
+  (currentData.answer_options || []).forEach(function (opt) {
+    var btn = document.createElement('button');
+    btn.type      = 'button';
+    btn.className = 'answer-btn';
+    btn.textContent = opt;
+    btn.addEventListener('click', function () { submitAnswer(opt); });
+    container.appendChild(btn);
+  });
+}
+
+/* ── Submit answer to server ─────────────────────────────── */
+function submitAnswer(answer) {
+  document.querySelectorAll('.answer-btn').forEach(function (b) { b.disabled = true; });
+  liveSend({
+    type:             'submit_answer',
+    answer:           answer,
+    target_symbol:    currentData.target_symbol,
+    target_cells:     currentData.target_cells,
+    clicked_cells:    selectedCells.slice().sort(function (a, b) { return a - b; }),
+    symbol_time_ms:   symbolStartedAt ? Date.now() - symbolStartedAt : 0,
+    response_time_ms: answerStartedAt ? Date.now() - answerStartedAt : 0,
+  });
+}
+
+/* ── Server messages ─────────────────────────────────────── */
+function liveRecv(data) {
+  var overlay = document.getElementById('feedback-overlay');
+  var icon    = document.getElementById('feedback-icon');
+  var text    = document.getElementById('feedback-text');
+
+  if (data.type === 'retry') {
+    // Wrong answer — redo from image study, no correct answer revealed
+    icon.textContent = '✗';
+    icon.style.color = 'rgba(248,113,113,1)';
+    text.textContent = 'Incorrect — please study the image again and try once more.';
+    overlay.style.display = 'flex';
+    setTimeout(function () {
+      overlay.style.display = 'none';
+      showImage(data.same_image);   // same image, fresh symbol grid
+    }, 2200);
+  }
+
+  if (data.type === 'feedback') {
+    // Correct answer — move to next image
+    icon.textContent = '✓';
+    icon.style.color = 'rgba(52,211,153,1)';
+    text.textContent = 'Correct!';
+    overlay.style.display = 'flex';
+    setTimeout(function () {
+      overlay.style.display = 'none';
+      if (data.next_image && data.next_image.filename) {
+        showImage(data.next_image);
+      } else {
+        document.getElementById('phase-1').style.display = 'none';
+        document.getElementById('phase-2').style.display = 'none';
+        document.getElementById('phase-3').style.display = 'none';
+        document.getElementById('pool-exhausted').style.removeProperty('display');
+      }
+    }, 1500);
+  }
+}
+
+/* ── Init ────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', function () {
+  var first = js_vars.first_image;
+  if (first && first.filename) showImage(first);
+});
+</script>
+{{ endblock }}

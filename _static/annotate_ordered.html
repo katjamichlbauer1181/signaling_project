@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ordered Task Annotation Tool</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #1e1e1e; color: #eee; display: flex; height: 100vh; overflow: hidden; }
+
+    /* ── Left panel ── */
+    #panel {
+      width: 340px; min-width: 340px;
+      background: #252525;
+      border-right: 1px solid #444;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    #panel h1 { font-size: 1rem; padding: 14px 16px; background: #333; border-bottom: 1px solid #444; }
+
+    #controls { padding: 12px 16px; border-bottom: 1px solid #444; }
+    #controls label { display: block; font-size: .8rem; color: #aaa; margin-bottom: 4px; }
+    #filename-input {
+      width: 100%; padding: 6px 8px;
+      background: #1a1a1a; border: 1px solid #555; border-radius: 4px;
+      color: #eee; font-size: .85rem;
+    }
+    #load-btn {
+      margin-top: 8px; width: 100%;
+      padding: 7px; background: #2563eb; border: none; border-radius: 4px;
+      color: #fff; font-size: .85rem; cursor: pointer;
+    }
+    #load-btn:hover { background: #1d4ed8; }
+
+    #question-wrap { padding: 10px 16px; border-bottom: 1px solid #444; }
+    #question-wrap label { display: block; font-size: .8rem; color: #aaa; margin-bottom: 4px; }
+    #question-input {
+      width: 100%; padding: 6px 8px;
+      background: #1a1a1a; border: 1px solid #555; border-radius: 4px;
+      color: #eee; font-size: .85rem;
+    }
+
+    #box-list { flex: 1; overflow-y: auto; padding: 10px 16px; }
+    #box-list h2 { font-size: .8rem; color: #aaa; margin-bottom: 8px; }
+    .box-item {
+      background: #333; border-radius: 6px; padding: 8px 10px;
+      margin-bottom: 8px; position: relative;
+    }
+    .box-item .box-num {
+      display: inline-block; width: 22px; height: 22px;
+      border-radius: 50%; background: #2563eb;
+      color: #fff; font-size: .75rem; font-weight: 700;
+      line-height: 22px; text-align: center; margin-right: 8px;
+    }
+    .box-item input[type=text] {
+      background: #1a1a1a; border: 1px solid #555; border-radius: 3px;
+      color: #eee; font-size: .8rem; padding: 3px 6px; width: calc(100% - 36px);
+    }
+    .box-item .coords { font-size: .72rem; color: #888; margin-top: 4px; margin-left: 30px; font-family: monospace; }
+    .box-item .del-btn {
+      position: absolute; top: 8px; right: 8px;
+      background: none; border: none; color: #888; cursor: pointer; font-size: .9rem; line-height: 1;
+    }
+    .box-item .del-btn:hover { color: #ef4444; }
+    #hint { font-size: .75rem; color: #888; margin-top: 6px; }
+
+    #output-wrap { padding: 10px 16px; border-top: 1px solid #444; }
+    #output-wrap h2 { font-size: .8rem; color: #aaa; margin-bottom: 6px; }
+    #json-output {
+      width: 100%; height: 90px;
+      background: #1a1a1a; border: 1px solid #555; border-radius: 4px;
+      color: #9de; font-size: .72rem; font-family: monospace;
+      padding: 6px 8px; resize: vertical;
+    }
+    #copy-btn {
+      margin-top: 6px; width: 100%;
+      padding: 6px; background: #059669; border: none; border-radius: 4px;
+      color: #fff; font-size: .8rem; cursor: pointer;
+    }
+    #copy-btn:hover { background: #047857; }
+    #copy-msg { font-size: .75rem; color: #34d399; margin-top: 4px; display: none; }
+
+    /* ── Canvas area ── */
+    #canvas-wrap {
+      flex: 1;
+      display: flex; align-items: flex-start; justify-content: flex-start;
+      overflow: auto;
+      padding: 16px;
+      background: #1a1a1a;
+    }
+    #canvas-container { position: relative; line-height: 0; }
+    #main-canvas { display: block; cursor: crosshair; }
+
+    /* drawing rect */
+    #drag-rect {
+      position: absolute;
+      border: 2px dashed #facc15;
+      background: rgba(250,204,21,0.08);
+      pointer-events: none;
+      display: none;
+    }
+
+    #status-bar {
+      position: fixed; bottom: 0; left: 340px; right: 0;
+      background: #333; border-top: 1px solid #444;
+      font-size: .75rem; color: #888;
+      padding: 4px 14px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Left panel ── -->
+<div id="panel">
+  <h1>Ordered Task Annotation</h1>
+
+  <div id="controls">
+    <label for="filename-input">Image filename</label>
+    <input id="filename-input" type="text" placeholder="ahmed-galal-LaLJXbAloZE-unsplash.jpg" autocomplete="off">
+    <button id="load-btn" onclick="loadImage()">Load image</button>
+  </div>
+
+  <div id="question-wrap">
+    <label for="question-input">Question text</label>
+    <input id="question-input" type="text" placeholder="Click on the giraffe from head to tail">
+  </div>
+
+  <div id="box-list">
+    <h2>Bounding boxes (drag to draw)</h2>
+    <div id="boxes-container"></div>
+    <p id="hint">Load an image, then drag to draw boxes in order.</p>
+  </div>
+
+  <div id="output-wrap">
+    <h2>CSV targets JSON</h2>
+    <textarea id="json-output" readonly placeholder="JSON will appear here…"></textarea>
+    <button id="copy-btn" onclick="copyJson()">Copy to clipboard</button>
+    <p id="copy-msg">Copied!</p>
+  </div>
+</div>
+
+<!-- ── Canvas area ── -->
+<div id="canvas-wrap">
+  <div id="canvas-container">
+    <canvas id="main-canvas" width="800" height="500"></canvas>
+    <div id="drag-rect"></div>
+  </div>
+</div>
+
+<div id="status-bar">Open via devserver: http://localhost:8000/static/annotate_ordered.html — then enter a filename and click Load.</div>
+
+<script>
+var boxes  = [];     // [{name, x1, y1, x2, y2}] (normalised 0-1)
+var imgW   = 1, imgH = 1;  // actual rendered pixel dimensions
+var dragging = false;
+var dragStart = null;
+var currentImg = null;
+
+function setStatus(msg, isError) {
+  var bar = document.getElementById('status-bar');
+  bar.textContent = msg;
+  bar.style.color = isError ? '#f87171' : '#888';
+}
+
+var canvas    = document.getElementById('main-canvas');
+var ctx       = canvas.getContext('2d');
+var dragRect  = document.getElementById('drag-rect');
+var container = document.getElementById('canvas-container');
+
+/* ── Load image ──────────────────────────────────────────── */
+function loadImage() {
+  var fn = document.getElementById('filename-input').value.trim();
+  if (!fn) {
+    setStatus('Enter a filename first, then click Load.', true);
+    return;
+  }
+  if (location.protocol === 'file:') {
+    setStatus('ERROR: Open this page through the devserver — http://localhost:8000/static/annotate_ordered.html', true);
+    return;
+  }
+  boxes = [];
+  renderBoxList();
+  updateJson();
+
+  var img = new Image();
+  setStatus('Loading ' + fn + '…');
+  img.onload = function () {
+    currentImg = img;
+    // fit to max 1200×800 but keep aspect ratio
+    var maxW = Math.min(1200, window.innerWidth - 380);
+    var maxH = Math.min(900, window.innerHeight - 60);
+    var scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
+    imgW = Math.round(img.naturalWidth  * scale);
+    imgH = Math.round(img.naturalHeight * scale);
+    canvas.width  = imgW;
+    canvas.height = imgH;
+    redraw();
+    setStatus(fn + '  —  ' + img.naturalWidth + '×' + img.naturalHeight +
+      ' px  (displayed at ' + imgW + '×' + imgH + ')  |  Drag to draw a box.  Shift+click to delete.');
+  };
+  img.onerror = function () {
+    setStatus('ERROR: could not load /static/images/' + fn + '  — check the filename is correct and the devserver is running.', true);
+  };
+  img.src = '/static/images/' + fn;
+}
+
+/* ── Redraw canvas ───────────────────────────────────────── */
+var COLOURS = ['#2563eb','#16a34a','#dc2626','#d97706','#7c3aed','#0891b2','#be185d','#65a30d'];
+
+function redraw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (currentImg) ctx.drawImage(currentImg, 0, 0, imgW, imgH);
+
+  boxes.forEach(function (b, i) {
+    var x = b.x1 * imgW, y = b.y1 * imgH;
+    var w = (b.x2 - b.x1) * imgW, h = (b.y2 - b.y1) * imgH;
+    var col = COLOURS[i % COLOURS.length];
+
+    ctx.strokeStyle = col;
+    ctx.lineWidth   = 2;
+    ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = col.replace(')', ',0.12)').replace('rgb', 'rgba');
+    ctx.fillRect(x, y, w, h);
+
+    // number badge
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(x + 14, y + 14, 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 13px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(i + 1, x + 14, y + 14);
+  });
+}
+
+/* ── Mouse drag to draw box ──────────────────────────────── */
+function canvasPos(e) {
+  var r = canvas.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+canvas.addEventListener('mousedown', function (e) {
+  if (!currentImg) return;
+  var p = canvasPos(e);
+  // check if clicking inside existing box (to delete)
+  for (var i = boxes.length - 1; i >= 0; i--) {
+    var b = boxes[i];
+    var bx = b.x1*imgW, by = b.y1*imgH, bw=(b.x2-b.x1)*imgW, bh=(b.y2-b.y1)*imgH;
+    if (p.x >= bx && p.x <= bx+bw && p.y >= by && p.y <= by+bh) {
+      if (e.altKey || e.shiftKey) {  // alt/shift+click deletes
+        boxes.splice(i, 1);
+        renderBoxList(); updateJson(); redraw();
+        return;
+      }
+    }
+  }
+  dragging = true;
+  dragStart = p;
+  dragRect.style.display = 'block';
+  dragRect.style.left   = p.x + 'px';
+  dragRect.style.top    = p.y + 'px';
+  dragRect.style.width  = '0';
+  dragRect.style.height = '0';
+});
+
+document.addEventListener('mousemove', function (e) {
+  if (!dragging) return;
+  var p = canvasPos(e);
+  var x = Math.min(dragStart.x, p.x);
+  var y = Math.min(dragStart.y, p.y);
+  var w = Math.abs(p.x - dragStart.x);
+  var h = Math.abs(p.y - dragStart.y);
+  dragRect.style.left   = x + 'px';
+  dragRect.style.top    = y + 'px';
+  dragRect.style.width  = w + 'px';
+  dragRect.style.height = h + 'px';
+});
+
+document.addEventListener('mouseup', function (e) {
+  if (!dragging) return;
+  dragging = false;
+  dragRect.style.display = 'none';
+  var p = canvasPos(e);
+  var x1 = Math.min(dragStart.x, p.x) / imgW;
+  var y1 = Math.min(dragStart.y, p.y) / imgH;
+  var x2 = Math.max(dragStart.x, p.x) / imgW;
+  var y2 = Math.max(dragStart.y, p.y) / imgH;
+  // ignore tiny accidental clicks
+  if ((x2 - x1) < 0.01 || (y2 - y1) < 0.01) return;
+  // clamp
+  x1 = Math.max(0, Math.min(1, x1));
+  y1 = Math.max(0, Math.min(1, y1));
+  x2 = Math.max(0, Math.min(1, x2));
+  y2 = Math.max(0, Math.min(1, y2));
+  boxes.push({ name: 'target ' + (boxes.length + 1), x1: x1, y1: y1, x2: x2, y2: y2 });
+  renderBoxList();
+  updateJson();
+  redraw();
+});
+
+/* ── Box list ────────────────────────────────────────────── */
+function renderBoxList() {
+  var container = document.getElementById('boxes-container');
+  container.innerHTML = '';
+  document.getElementById('hint').style.display = boxes.length ? 'none' : '';
+
+  boxes.forEach(function (b, i) {
+    var col = COLOURS[i % COLOURS.length];
+    var item = document.createElement('div');
+    item.className = 'box-item';
+    item.innerHTML =
+      '<span class="box-num" style="background:' + col + '">' + (i+1) + '</span>' +
+      '<input type="text" value="' + escHtml(b.name) + '" placeholder="target name" ' +
+             'onchange="boxes[' + i + '].name=this.value; updateJson();">' +
+      '<div class="coords">[' +
+        r(b.x1) + ', ' + r(b.y1) + ', ' + r(b.x2) + ', ' + r(b.y2) +
+      ']</div>' +
+      '<button class="del-btn" onclick="deleteBox(' + i + ')" title="Delete box">✕</button>';
+    container.appendChild(item);
+  });
+}
+
+function deleteBox(i) {
+  boxes.splice(i, 1);
+  renderBoxList(); updateJson(); redraw();
+}
+
+function r(v) { return v.toFixed(2); }
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+
+/* ── JSON output ─────────────────────────────────────────── */
+function updateJson() {
+  if (!boxes.length) { document.getElementById('json-output').value = ''; return; }
+  var arr = boxes.map(function (b) {
+    return '{"name": "' + b.name.replace(/"/g,'\\"') + '", "box": [' +
+      r(b.x1) + ', ' + r(b.y1) + ', ' + r(b.x2) + ', ' + r(b.y2) + ']}';
+  });
+  document.getElementById('json-output').value = '[' + arr.join(', ') + ']';
+}
+
+function copyJson() {
+  var ta = document.getElementById('json-output');
+  if (!ta.value) return;
+  navigator.clipboard.writeText(ta.value).then(function () {
+    var msg = document.getElementById('copy-msg');
+    msg.style.display = 'block';
+    setTimeout(function () { msg.style.display = 'none'; }, 2000);
+  });
+}
+
+/* ── Enter key on filename loads image ───────────────────── */
+document.getElementById('filename-input').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') loadImage();
+});
+
+/* ── Keyboard shortcuts ──────────────────────────────────── */
+document.addEventListener('keydown', function (e) {
+  // Ctrl/Cmd+Z: undo last box
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+    if (boxes.length) { boxes.pop(); renderBoxList(); updateJson(); redraw(); }
+    e.preventDefault();
+  }
+});
+</script>
+</body>
+</html>

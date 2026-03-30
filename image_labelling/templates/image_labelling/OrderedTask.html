@@ -1,0 +1,344 @@
+{{ block title }}Image Ordering Task{{ endblock }}
+
+{{ block content }}
+<div class="container-fluid mt-3">
+
+  <!-- ── Timer bar ─────────────────────────────────────────── -->
+  <div class="row mb-3">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <span class="text-muted small">Image ordering task</span>
+        <span class="badge bg-secondary px-3 py-2 fs-6">
+          Time remaining:&nbsp;<span id="timer-display" class="font-monospace">--:--</span>
+        </span>
+      </div>
+      <div class="progress mt-1" style="height: 5px;">
+        <div id="timer-bar" class="progress-bar bg-success" style="width:100%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Task card ─────────────────────────────────────────── -->
+  <div id="task-card" class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+      <div class="card shadow-sm">
+
+        <!-- Question -->
+        <div class="card-header bg-light py-3">
+          <p id="question-text" class="lead mb-0 text-center fw-semibold">—</p>
+        </div>
+
+        <!-- Image area -->
+        <div class="card-body p-0" style="background:#eee;">
+
+          <!-- Spinner -->
+          <div id="img-spinner"
+               class="flex-column align-items-center justify-content-center text-muted"
+               style="min-height:300px; display:flex;">
+            <div class="spinner-border text-secondary mb-2" role="status"></div>
+            <p class="mb-0">Loading image…</p>
+          </div>
+
+          <!--
+            CSS-grid stack: image sets the height; click-layer and feedback-layer
+            stretch to match automatically — no JS sizing needed.
+          -->
+          <div id="image-stack"
+               style="display:none; grid-template-areas:'stack'; line-height:0;">
+
+            <img id="task-image" src="" alt="Task image"
+                 style="grid-area:stack; align-self:start;
+                        width:100%; height:auto; display:block;">
+
+            <!-- Receives clicks and holds numbered markers -->
+            <div id="click-layer"
+                 style="grid-area:stack; align-self:stretch; justify-self:stretch;
+                        position:relative; cursor:crosshair;">
+            </div>
+
+            <!-- Shows target bounding boxes after submit (feedback) -->
+            <div id="feedback-layer"
+                 style="grid-area:stack; align-self:stretch; justify-self:stretch;
+                        position:relative; display:none; pointer-events:none;">
+            </div>
+
+            <!-- ✓ / ✗ emoji overlay -->
+            <div id="feedback-overlay"
+                 style="grid-area:stack; align-self:stretch; justify-self:stretch;
+                        display:none; align-items:center; justify-content:center;
+                        font-size:5rem; pointer-events:none;">
+            </div>
+
+          </div><!-- /image-stack -->
+        </div><!-- /card-body -->
+
+        <!-- Footer -->
+        <div class="card-footer">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span class="text-muted small">
+              Click on the image in order.
+              Click a marker again to remove it.
+              &nbsp;|&nbsp;
+              Clicks: <span id="click-count">0</span>&nbsp;/&nbsp;<span id="num-targets">—</span>
+              &nbsp;|&nbsp;
+              Image <span id="img-counter">—</span>
+            </span>
+            <button id="submit-btn"
+                    class="btn btn-primary px-4"
+                    onclick="submitAnswer()"
+                    disabled>
+              Submit order
+            </button>
+          </div>
+        </div>
+
+      </div><!-- /card -->
+    </div>
+  </div>
+
+  <!-- ── Pool-exhausted notice ──────────────────────────────── -->
+  <div id="pool-exhausted" class="row justify-content-center" style="display:none!important;">
+    <div class="col-12 col-lg-8">
+      <div class="alert alert-success mt-3">
+        <h5 class="alert-heading">All images completed!</h5>
+        <p class="mb-0">The session will end automatically when the timer reaches zero.</p>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container-fluid -->
+
+<style>
+/* Numbered click marker */
+.click-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.9);
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 28px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  z-index: 10;
+}
+.click-marker:hover {
+  background: rgba(220, 38, 38, 0.85);
+}
+/* Correct target box shown during feedback */
+.target-box {
+  position: absolute;
+  border: 3px solid rgba(22, 163, 74, 0.9);
+  background: rgba(22, 163, 74, 0.15);
+  box-sizing: border-box;
+}
+.target-box-label {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(22, 163, 74, 0.9);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 26px;
+  text-align: center;
+}
+</style>
+
+<script>
+/* ── State ───────────────────────────────────────────────── */
+var TASK_DURATION = {{ duration_seconds }};
+var timeRemaining = TASK_DURATION;
+var timerStarted  = false;
+var imageShownAt  = null;
+var clickSequence = [];   // [{x, y}, ...] normalised coords
+var NUM_TARGETS   = 0;
+
+/* ── Timer ───────────────────────────────────────────────── */
+function fmt(s) {
+  var m = Math.floor(s / 60), sec = s % 60;
+  return m + ':' + (sec < 10 ? '0' : '') + sec;
+}
+function startTimer() {
+  if (timerStarted) return;
+  timerStarted = true;
+  var display = document.getElementById('timer-display');
+  var bar     = document.getElementById('timer-bar');
+  display.textContent = fmt(timeRemaining);
+  var iv = setInterval(function () {
+    if (timeRemaining > 0) timeRemaining--;
+    display.textContent = fmt(timeRemaining);
+    var pct = timeRemaining / TASK_DURATION * 100;
+    bar.style.width = pct + '%';
+    bar.className = 'progress-bar ' +
+      (pct > 20 ? 'bg-success' : pct > 10 ? 'bg-warning' : 'bg-danger');
+    if (timeRemaining === 0) clearInterval(iv);
+  }, 1000);
+}
+
+/* ── Marker rendering ────────────────────────────────────── */
+function renderMarkers() {
+  var layer = document.getElementById('click-layer');
+  // Remove only markers (not other children)
+  layer.querySelectorAll('.click-marker').forEach(function (m) { m.remove(); });
+
+  clickSequence.forEach(function (pt, i) {
+    var marker = document.createElement('div');
+    marker.className = 'click-marker';
+    marker.style.left = (pt.x * 100) + '%';
+    marker.style.top  = (pt.y * 100) + '%';
+    marker.textContent = i + 1;
+    marker.dataset.index = i;
+    // Click on marker removes it
+    marker.addEventListener('click', function (e) {
+      e.stopPropagation();
+      clickSequence.splice(parseInt(this.dataset.index), 1);
+      renderMarkers();
+      updateSubmit();
+    });
+    layer.appendChild(marker);
+  });
+  document.getElementById('click-count').textContent = clickSequence.length;
+  updateSubmit();
+}
+
+function updateSubmit() {
+  document.getElementById('submit-btn').disabled =
+    (NUM_TARGETS === 0 || clickSequence.length !== NUM_TARGETS);
+}
+
+function clearMarkers() {
+  clickSequence = [];
+  renderMarkers();
+}
+
+/* ── Feedback boxes ──────────────────────────────────────── */
+function showFeedbackBoxes(targets) {
+  var layer = document.getElementById('feedback-layer');
+  layer.innerHTML = '';
+  layer.style.display = 'block';
+  targets.forEach(function (t, i) {
+    var b = t.box;
+    var box = document.createElement('div');
+    box.className = 'target-box';
+    box.style.left   = (b[0] * 100) + '%';
+    box.style.top    = (b[1] * 100) + '%';
+    box.style.width  = ((b[2] - b[0]) * 100) + '%';
+    box.style.height = ((b[3] - b[1]) * 100) + '%';
+    var lbl = document.createElement('div');
+    lbl.className = 'target-box-label';
+    lbl.textContent = i + 1;
+    box.appendChild(lbl);
+    layer.appendChild(box);
+  });
+}
+
+/* ── Show image ──────────────────────────────────────────── */
+function showImage(data) {
+  var img     = document.getElementById('task-image');
+  var spinner = document.getElementById('img-spinner');
+  var stack   = document.getElementById('image-stack');
+  var fbLayer = document.getElementById('feedback-layer');
+  var qText   = document.getElementById('question-text');
+  var counter = document.getElementById('img-counter');
+
+  stack.style.display   = 'none';
+  fbLayer.style.display = 'none';
+  fbLayer.innerHTML     = '';
+  spinner.style.display = 'flex';
+  clearMarkers();
+  img.onload  = null;
+  img.onerror = null;
+
+  NUM_TARGETS = data.num_targets || 1;
+  document.getElementById('num-targets').textContent = NUM_TARGETS;
+  document.getElementById('click-layer').style.pointerEvents = '';
+
+  var fired = false;
+  function onReady() {
+    if (fired) return;
+    fired = true;
+    spinner.style.display = 'none';
+    stack.style.display   = 'grid';
+    startTimer();
+    imageShownAt = Date.now();
+  }
+  img.onload  = onReady;
+  img.onerror = function () {
+    spinner.innerHTML = '<p class="text-danger small mb-0">Could not load: <code>' +
+      data.filename + '</code></p>';
+    startTimer();
+  };
+  img.src = '/static/images/' + data.filename;
+  if (img.complete && img.naturalWidth > 0) { onReady(); }
+
+  qText.textContent = data.question;
+  counter.textContent = (data.index + 1) + ' / ' + data.total;
+}
+
+/* ── Click-layer: place or remove markers ────────────────── */
+document.getElementById('click-layer').addEventListener('click', function (e) {
+  if (clickSequence.length >= NUM_TARGETS) return;  // already at max
+  var x = e.offsetX / this.offsetWidth;
+  var y = e.offsetY / this.offsetHeight;
+  clickSequence.push({x: x, y: y});
+  renderMarkers();
+});
+
+/* ── Submit ──────────────────────────────────────────────── */
+function submitAnswer() {
+  document.getElementById('submit-btn').disabled = true;
+  document.getElementById('click-layer').style.pointerEvents = 'none';
+  liveSend({
+    type: 'submit_answer',
+    click_sequence: clickSequence,
+    response_time_ms: imageShownAt ? Date.now() - imageShownAt : 0,
+  });
+}
+
+/* ── Feedback from server ────────────────────────────────── */
+function liveRecv(data) {
+  if (data.type === 'feedback') {
+    var fbOverlay = document.getElementById('feedback-overlay');
+
+    showFeedbackBoxes(data.targets);
+    fbOverlay.textContent   = data.is_correct ? '✓' : '✗';
+    fbOverlay.style.color   = data.is_correct ? 'rgba(22,163,74,0.9)' : 'rgba(220,38,38,0.9)';
+    fbOverlay.style.display = 'flex';
+
+    setTimeout(function () {
+      fbOverlay.style.display = 'none';
+      if (data.next_image && data.next_image.filename) {
+        showImage(data.next_image);
+      } else {
+        document.getElementById('task-card').style.display = 'none';
+        document.getElementById('pool-exhausted').style.removeProperty('display');
+      }
+    }, 1800);
+  }
+}
+
+/* ── Keyboard: Ctrl/Cmd+Enter to submit ─────────────────── */
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    var btn = document.getElementById('submit-btn');
+    if (!btn.disabled) submitAnswer();
+  }
+});
+
+/* ── Init ────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', function () {
+  var first = js_vars.first_image;
+  if (first && first.filename) showImage(first);
+});
+</script>
+{{ endblock }}

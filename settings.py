@@ -8,6 +8,7 @@ SESSION_CONFIGS = [
         num_demo_participants=1,
         task_minutes=90,
         break_minutes=15,
+        task_type='captcha',
     ),
     dict(
         name='image_labelling_demo',
@@ -16,6 +17,34 @@ SESSION_CONFIGS = [
         num_demo_participants=1,
         task_minutes=2,
         break_minutes=1,
+        task_type='captcha',
+    ),
+    dict(
+        name='captcha_demo',
+        display_name='CAPTCHA Grid Task (Demo)',
+        app_sequence=['image_labelling'],
+        num_demo_participants=1,
+        task_minutes=3,
+        break_minutes=1,
+        task_type='captcha',
+    ),
+    dict(
+        name='ordered_demo',
+        display_name='Ordered Selection Task (Demo)',
+        app_sequence=['image_labelling'],
+        num_demo_participants=1,
+        task_minutes=3,
+        break_minutes=1,
+        task_type='ordered',
+    ),
+    dict(
+        name='symbol_demo',
+        display_name='Symbol Search Task (Demo)',
+        app_sequence=['image_labelling'],
+        num_demo_participants=1,
+        task_minutes=5,
+        break_minutes=1,
+        task_type='symbol',
     ),
 ]
 
