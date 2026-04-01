@@ -1,0 +1,67 @@
+{{ block title }}Welcome{{ endblock }}
+
+{{ block content }}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card shadow-sm">
+
+        {% if task_type == 'matrix' %}
+        <div class="card-header bg-primary text-white text-center py-3">
+          <h3 class="mb-0">Welcome to the Symbol Task Study</h3>
+        </div>
+        <div class="card-body px-4 py-4">
+          <p class="lead">Thank you for taking part in this study.</p>
+          <p>
+            In this study you will complete a series of <strong>symbol-matching tasks</strong>.
+            On each trial you will see a target symbol and must identify all matching symbols
+            from a grid of 64.
+          </p>
+          <p>
+            The study consists of <strong>two sessions of {{ task_minutes }} minutes each</strong>,
+            with an optional {{ break_minutes }}-minute break in between.
+          </p>
+          <hr>
+          <p><strong>Before you begin, please note:</strong></p>
+          <ul>
+            <li>Ensure you are in a quiet environment where you will not be interrupted.</li>
+            <li>Do <em>not</em> close or refresh the browser window during the task.</li>
+            <li>Work at a steady pace — there is no minimum time per trial.</li>
+            <li>No feedback is given after each trial; just do your best.</li>
+            <li>Your responses are recorded automatically.</li>
+          </ul>
+        </div>
+
+        {% else %}
+        <div class="card-header bg-primary text-white text-center py-3">
+          <h3 class="mb-0">Welcome to the Image Labelling Study</h3>
+        </div>
+        <div class="card-body px-4 py-4">
+          <p class="lead">Thank you for taking part in this study.</p>
+          <p>
+            In this study you will view a series of images, one at a time, and answer
+            a question about each image in your own words.
+          </p>
+          <p>
+            The study is divided into <strong>two sessions of {{ task_minutes }} minutes each</strong>,
+            with an optional {{ break_minutes }}-minute break in between.
+          </p>
+          <hr>
+          <p><strong>Before you begin, please note:</strong></p>
+          <ul>
+            <li>Ensure you are in a quiet environment where you will not be interrupted.</li>
+            <li>Do <em>not</em> close or refresh the browser window during the task.</li>
+            <li>Work at a steady pace — there is no minimum time required per image.</li>
+            <li>Your answers will be recorded automatically.</li>
+          </ul>
+        </div>
+        {% endif %}
+
+        <div class="card-footer text-center py-3">
+          {{ next_button }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{{ endblock }}

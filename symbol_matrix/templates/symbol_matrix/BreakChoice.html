@@ -9,15 +9,21 @@
           <h4 class="mb-0">First session complete!</h4>
         </div>
         <div class="card-body px-4 py-4 text-center">
-          <p class="lead">You have completed the first 90-minute session.</p>
+          <p class="lead">You have completed the first {{ task_minutes }}-minute session.</p>
           <p>
-            You may now take a <strong>15-minute break</strong> before starting the second session,
-            or continue working immediately.
+            You may now take a <strong>{{ break_minutes }}-minute break</strong> before
+            starting the second session, or continue working immediately.
           </p>
           <div class="alert alert-light text-start small mt-3">
             <ul class="mb-0">
-              <li><strong>Take a break:</strong> The screen will be locked for 15 minutes, then the second session starts automatically.</li>
-              <li><strong>Skip the break:</strong> You continue labelling images right away. Your second session of 90 minutes will begin immediately after the 15-minute period.</li>
+              <li>
+                <strong>Take a break:</strong> The screen will be locked for
+                {{ break_minutes }} minutes, then the second session starts automatically.
+              </li>
+              <li>
+                <strong>Skip the break:</strong> You continue the task right away for
+                {{ break_minutes }} minutes, and then the second session begins.
+              </li>
             </ul>
           </div>
           <div class="mt-4 text-start">

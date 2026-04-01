@@ -1,0 +1,77 @@
+{{ block title }}Instructions{{ endblock }}
+
+{{ block content }}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white py-3">
+          <h4 class="mb-0">How this task works</h4>
+        </div>
+        <div class="card-body px-4 py-4">
+
+          <p class="lead mb-3">
+            You will complete a series of <strong>symbol-matching</strong> trials.
+            Each trial looks like this:
+          </p>
+
+          <div class="card bg-light border mb-4 p-3 text-center">
+            <p class="mb-1 text-muted" style="font-size:.9rem;">Example trial layout</p>
+            <p class="mb-1"><strong>Select all symbols that match this one:</strong></p>
+            <div style="font-size:2.2rem; border:2px solid #0d6efd; border-radius:8px;
+                        display:inline-block; padding:.3rem 1rem; background:#e8f0fe;
+                        margin:.4rem 0 .8rem;">α</div>
+            <p class="mb-1 text-muted" style="font-size:.85rem;">
+              ↓ 8 × 8 grid of symbols ↓
+            </p>
+            <div style="display:grid;grid-template-columns:repeat(8,32px);
+                        gap:3px;justify-content:center;margin:.4rem auto .6rem;">
+              {% for i in "12345678901234567890123456789012345678901234567890123456789012345678" %}
+              <div style="width:32px;height:32px;border:1.5px solid #ccc;
+                          border-radius:4px;background:#f8f9fa;"></div>
+              {% endfor %}
+            </div>
+            <button class="btn btn-primary btn-sm mt-1" disabled>Confirm Selection</button>
+          </div>
+
+          <ol class="mb-4">
+            <li class="mb-2">
+              A <strong>target symbol</strong> is shown at the top of each trial.
+            </li>
+            <li class="mb-2">
+              Below it is a grid of <strong>64 symbols</strong>. Some of them match the target; others do not.
+            </li>
+            <li class="mb-2">
+              <strong>Click every cell that contains the target symbol.</strong>
+              Click again to deselect a cell.
+            </li>
+            <li class="mb-2">
+              When you are done, click <strong>Confirm Selection</strong> to submit and move to the next trial.
+            </li>
+            <li class="mb-2">
+              The number of matching symbols varies from trial to trial — sometimes there is only one; sometimes there are several.
+            </li>
+          </ol>
+
+          <div class="alert alert-secondary mb-3">
+            <strong>No feedback is given</strong> after each trial — the next trial starts immediately.
+            Just do your best and work at a steady pace.
+          </div>
+
+          <div class="alert alert-info mb-0">
+            <strong>Timing:</strong> The task runs for
+            <strong>{{ task_minutes }} minutes</strong>.
+            No timer will be displayed during the task itself.
+            After this first session you will be asked whether you want a
+            <strong>{{ break_minutes }}-minute break</strong> before the second session.
+          </div>
+
+        </div>
+        <div class="card-footer text-center py-3">
+          {{ next_button }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{{ endblock }}

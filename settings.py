@@ -1,28 +1,30 @@
 from os import environ
 
 SESSION_CONFIGS = [
+    # ── Matrix (pure symbol) task ──────────────────────────────────────────
     dict(
-        name='image_labelling',
-        display_name='Image Labelling Task (Full — 90+15+90 min)',
-        app_sequence=['image_labelling'],
+        name='matrix_demo',
+        display_name='Symbol Matrix Task (Demo — 3+1+3 min)',
+        app_sequence=['symbol_matrix'],
         num_demo_participants=1,
-        task_minutes=90,
-        break_minutes=15,
-        task_type='captcha',
-    ),
-    dict(
-        name='image_labelling_demo',
-        display_name='Image Labelling Task (Demo — short timers)',
-        app_sequence=['image_labelling'],
-        num_demo_participants=1,
-        task_minutes=2,
+        task_minutes=3,
         break_minutes=1,
-        task_type='captcha',
+        task_type='matrix',
     ),
+    dict(
+        name='matrix_full',
+        display_name='Symbol Matrix Task (Full — 40+10+40 min)',
+        app_sequence=['symbol_matrix'],
+        num_demo_participants=1,
+        task_minutes=40,
+        break_minutes=10,
+        task_type='matrix',
+    ),
+    # ── Legacy demos (kept for reference) ─────────────────────────────────
     dict(
         name='captcha_demo',
-        display_name='CAPTCHA Grid Task (Demo)',
-        app_sequence=['image_labelling'],
+        display_name='[Legacy] CAPTCHA Grid Task (Demo)',
+        app_sequence=['symbol_matrix'],
         num_demo_participants=1,
         task_minutes=3,
         break_minutes=1,
@@ -30,8 +32,8 @@ SESSION_CONFIGS = [
     ),
     dict(
         name='ordered_demo',
-        display_name='Ordered Selection Task (Demo)',
-        app_sequence=['image_labelling'],
+        display_name='[Legacy] Ordered Selection Task (Demo)',
+        app_sequence=['symbol_matrix'],
         num_demo_participants=1,
         task_minutes=3,
         break_minutes=1,
@@ -39,8 +41,8 @@ SESSION_CONFIGS = [
     ),
     dict(
         name='symbol_demo',
-        display_name='Symbol Search Task (Demo)',
-        app_sequence=['image_labelling'],
+        display_name='[Legacy] Symbol Search + Image Task (Demo)',
+        app_sequence=['symbol_matrix'],
         num_demo_participants=1,
         task_minutes=5,
         break_minutes=1,
@@ -66,7 +68,7 @@ ROOMS = []
 ADMIN_USERNAME = 'admin'
 ADMIN_PASSWORD = environ.get('OTREE_ADMIN_PASSWORD', 'admin')
 
-DEMO_PAGE_INTRO_HTML = 'Image Labelling Experiment Demo'
+DEMO_PAGE_INTRO_HTML = 'Symbol Matrix Task Experiment'
 
 SECRET_KEY = 'change-this-secret-key-before-deployment'
 

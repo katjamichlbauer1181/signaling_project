@@ -1,0 +1,67 @@
+ANDROID TABLET SETUP — one time per tablet
+==========================================
+
+1. Install Termux
+   - Download F-Droid from: https://f-droid.org  (do this while you still have internet)
+   - Install Termux FROM F-DROID (not from Google Play — that version is outdated)
+
+2. Open Termux and run these commands one by one:
+
+   pkg update && pkg upgrade
+   pkg install python git
+   pip install otree
+
+3. Copy the experiment folder to the tablet
+   - Connect tablet to your laptop via USB
+   - Copy the entire "signaling_project" folder to the tablet
+   - Suggested location: /sdcard/signaling_project
+   - In Termux, link it: ln -s /sdcard/signaling_project ~/experiment
+
+4. Set executable permission on the startup script:
+   chmod +x ~/experiment/start_experiment_android.sh
+
+5. Optional — install Termux:API for auto-opening browser:
+   pkg install termux-api
+   (Also install the Termux:API companion app from F-Droid)
+
+
+RUNNING THE EXPERIMENT (each session)
+======================================
+
+In Termux:
+   bash ~/experiment/start_experiment_android.sh
+
+Then open Chrome/Firefox on the tablet and go to:
+   http://localhost:8000/demo
+
+Click "matrix_demo" (demo) or "matrix_full" (real experiment).
+The participant completes the session.
+
+
+EXPORTING DATA AFTER THE SESSION
+=================================
+
+Option A — via browser (easiest):
+   Go to http://localhost:8000/export in the browser
+   Download "All apps" CSV  (participant-level data)
+   Download "Custom export" CSV (trial-level data)
+   Save to /sdcard/ so you can copy via USB
+
+Option B — copy the database file directly:
+   The SQLite database is at:  ~/experiment/db.sqlite3
+   Copy it to /sdcard/ with:
+       cp ~/experiment/db.sqlite3 /sdcard/tablet_XX_data.sqlite3
+   Then copy from tablet to laptop via USB
+   Open with DB Browser for SQLite on your laptop
+
+
+NOTES FOR KENYA FIELDWORK
+==========================
+- No internet connection needed once Termux + oTree are installed
+- Each tablet is fully independent — no WiFi needed between tablets
+- Data is stored locally on each tablet until you collect it
+- Reset between participants: the startup script resets the DB automatically
+  WARNING: resetting deletes previous data — export first if needed!
+- If a participant's session is interrupted, they can reopen the browser
+  at http://localhost:8000 and continue where they left off (as long as
+  the Termux server is still running in the background)

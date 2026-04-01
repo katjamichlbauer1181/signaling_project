@@ -1,0 +1,889 @@
+{{ block title }}Image Task{{ endblock }}
+
+{{ block content }}
+<div class="container-fluid mt-3">
+
+  <!-- ── Session timer (shared across all task modes) ──────── -->
+  <div class="row mb-3">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <span class="text-muted small" id="task-mode-label">Task</span>
+        <span class="badge bg-secondary px-3 py-2 fs-6">
+          Time remaining:&nbsp;<span id="timer-display" class="font-monospace">--:--</span>
+        </span>
+      </div>
+      <div class="progress mt-1" style="height: 5px;">
+        <div id="timer-bar" class="progress-bar bg-success" style="width:100%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- CAPTCHA section                                         -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div id="section-captcha" style="display:none;">
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-8">
+        <div class="card shadow-sm">
+
+          <div class="card-header bg-light py-3">
+            <p id="captcha-question" class="lead mb-0 text-center fw-semibold">—</p>
+          </div>
+
+          <div class="card-body p-0" style="background:#eee;">
+            <div id="captcha-spinner"
+                 class="flex-column align-items-center justify-content-center text-muted"
+                 style="min-height:300px; display:flex;">
+              <div class="spinner-border text-secondary mb-2" role="status"></div>
+              <p class="mb-0">Loading image…</p>
+            </div>
+
+            <div id="captcha-image-stack"
+                 style="display:none; grid-template-areas:'stack'; line-height:0;">
+
+              <img id="captcha-image" src="" alt="Task image"
+                   style="grid-area:stack; align-self:start; width:100%; height:auto;
+                          display:block; cursor:default;">
+
+              <div id="captcha-grid-overlay"
+                   style="grid-area:stack; align-self:stretch; justify-self:stretch;
+                          display:none;
+                          grid-template-columns:repeat(3,1fr);
+                          grid-template-rows:repeat(3,1fr);">
+                <div class="grid-cell" data-cell="0"></div>
+                <div class="grid-cell" data-cell="1"></div>
+                <div class="grid-cell" data-cell="2"></div>
+                <div class="grid-cell" data-cell="3"></div>
+                <div class="grid-cell" data-cell="4"></div>
+                <div class="grid-cell" data-cell="5"></div>
+                <div class="grid-cell" data-cell="6"></div>
+                <div class="grid-cell" data-cell="7"></div>
+                <div class="grid-cell" data-cell="8"></div>
+              </div>
+
+              <div id="captcha-feedback-overlay"
+                   style="grid-area:stack; align-self:stretch; justify-self:stretch;
+                          display:none; align-items:center; justify-content:center;
+                          font-size:5rem; pointer-events:none;">
+              </div>
+            </div>
+          </div>
+
+          <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <span class="text-muted small">
+                Click cells to select, click again to deselect.
+                Image <span id="captcha-counter">—</span>
+              </span>
+              <button id="captcha-submit-btn"
+                      type="button"
+                      class="btn btn-primary px-4"
+                      onclick="submitCaptcha()"
+                      disabled>
+                Submit selection
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div><!-- /section-captcha -->
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- ORDERED section                                         -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div id="section-ordered" style="display:none;">
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-8">
+        <div class="card shadow-sm">
+
+          <div class="card-header bg-light py-3">
+            <p id="ordered-question" class="lead mb-0 text-center fw-semibold">—</p>
+          </div>
+
+          <div class="card-body p-0" style="background:#eee;">
+            <div id="ordered-spinner"
+                 class="flex-column align-items-center justify-content-center text-muted"
+                 style="min-height:300px; display:flex;">
+              <div class="spinner-border text-secondary mb-2" role="status"></div>
+              <p class="mb-0">Loading image…</p>
+            </div>
+
+            <div id="ordered-image-stack"
+                 style="display:none; grid-template-areas:'stack'; line-height:0;">
+
+              <img id="ordered-image" src="" alt="Task image"
+                   style="grid-area:stack; align-self:start; width:100%; height:auto; display:block;">
+
+              <div id="ordered-click-layer"
+                   style="grid-area:stack; align-self:stretch; justify-self:stretch;
+                          position:relative; cursor:crosshair;">
+              </div>
+
+              <div id="ordered-feedback-layer"
+                   style="grid-area:stack; align-self:stretch; justify-self:stretch;
+                          position:relative; display:none; pointer-events:none;">
+              </div>
+
+              <div id="ordered-feedback-overlay"
+                   style="grid-area:stack; align-self:stretch; justify-self:stretch;
+                          display:none; align-items:center; justify-content:center;
+                          font-size:5rem; pointer-events:none;">
+              </div>
+            </div>
+          </div>
+
+          <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <span class="text-muted small">
+                Click on the image in order. Click a marker again to remove it.
+                &nbsp;|&nbsp;
+                Clicks: <span id="ordered-click-count">0</span>&nbsp;/&nbsp;<span id="ordered-num-targets">—</span>
+                &nbsp;|&nbsp;
+                Image <span id="ordered-counter">—</span>
+              </span>
+              <button id="ordered-submit-btn"
+                      type="button"
+                      class="btn btn-primary px-4"
+                      onclick="submitOrdered()"
+                      disabled>
+                Submit order
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div><!-- /section-ordered -->
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SYMBOL section                                          -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div id="section-symbol" style="display:none;">
+
+    <!-- Phase 1: Image viewing -->
+    <div id="sym-phase-1" class="row justify-content-center">
+      <div class="col-12 col-lg-8">
+        <div class="card shadow-sm">
+          <div class="card-header bg-light py-3">
+            <p class="lead mb-0 text-center fw-semibold">
+              Study this image — you will answer a question about it from memory.
+            </p>
+          </div>
+          <div class="card-body p-0" style="background:#eee;">
+            <div id="sym-spinner"
+                 style="min-height:280px; display:flex; flex-direction:column;
+                        align-items:center; justify-content:center;" class="text-muted">
+              <div class="spinner-border text-secondary mb-2" role="status"></div>
+              <p class="mb-0">Loading image…</p>
+            </div>
+            <img id="sym-task-image" src="" alt="Task image"
+                 style="width:100%; height:auto; display:none;">
+          </div>
+          <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <div style="flex:1; min-width:0;">
+                <div class="text-muted small fw-semibold mb-1">Question you will be asked:</div>
+                <div id="sym-question-preview" class="fw-semibold text-dark">—</div>
+                <div class="text-muted small mt-2">Image <span id="sym-counter">—</span></div>
+              </div>
+              <div class="text-center flex-shrink-0">
+                <div class="text-muted small">Study time</div>
+                <div class="font-monospace fw-bold fs-4 text-warning"
+                     id="sym-viewing-countdown">8</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /sym-phase-1 -->
+
+    <!-- Phase 2: Symbol search -->
+    <div id="sym-phase-2" class="row justify-content-center" style="display:none;">
+      <div class="col-12 col-lg-9">
+        <div class="card shadow-sm">
+          <div class="card-header py-3">
+            <div class="d-flex align-items-center justify-content-center flex-wrap gap-3">
+              <span class="fw-semibold">Find all instances of:</span>
+              <div id="sym-target-display"
+                   style="width:60px; height:60px; background:#f8f9fa; border:2px solid #dee2e6;
+                          border-radius:8px; padding:6px; flex-shrink:0; display:flex;
+                          align-items:center; justify-content:center;">
+              </div>
+              <span class="text-muted small">Click every matching cell — select all of them and no others.</span>
+            </div>
+          </div>
+          <div class="card-body px-3 py-3">
+            <div id="sym-grid"
+                 style="display:grid; grid-template-columns:repeat(8,1fr); gap:4px;">
+            </div>
+            <div id="sym-error"
+                 style="display:none; margin-top:10px;"
+                 class="alert alert-danger py-2 mb-0 text-center small fw-semibold">
+            </div>
+          </div>
+          <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="text-muted small">
+                Selected: <span id="sym-selected-count">0</span>
+              </span>
+              <button id="sym-submit-btn"
+                      type="button"
+                      class="btn btn-primary px-4"
+                      onclick="submitSymbol()">
+                Check →
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /sym-phase-2 -->
+
+    <!-- Phase 3: Answer question -->
+    <div id="sym-phase-3" class="row justify-content-center" style="display:none;">
+      <div class="col-12 col-lg-6">
+        <div class="card shadow-sm">
+          <div class="card-header bg-light py-3">
+            <p id="sym-answer-question" class="lead mb-0 text-center fw-semibold">—</p>
+          </div>
+          <div class="card-body py-4">
+            <div id="sym-answer-options" class="d-grid gap-2"></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /sym-phase-3 -->
+
+  </div><!-- /section-symbol -->
+
+  <!-- ── Pool exhausted ────────────────────────────────────── -->
+  <div id="pool-exhausted" class="row justify-content-center" style="display:none!important;">
+    <div class="col-12 col-lg-8">
+      <div class="alert alert-success mt-3">
+        <h5 class="alert-heading">All tasks completed!</h5>
+        <p class="mb-0">The session will end automatically when the timer reaches zero.</p>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container-fluid -->
+
+<!-- ── Full-screen feedback overlay (symbol phase + transitions) -->
+<div id="feedback-overlay"
+     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65);
+            z-index:1050; align-items:center; justify-content:center; flex-direction:column;">
+  <div id="feedback-icon" style="font-size:6rem; line-height:1;"></div>
+  <div id="feedback-text"
+       style="color:#fff; font-size:1.25rem; font-weight:600; margin-top:1rem;
+              text-align:center; max-width:440px; padding:0 1.5rem;">
+  </div>
+</div>
+
+<style>
+/* ── CAPTCHA grid ─────────────────────────────────────────── */
+.grid-cell {
+  border: 2px solid rgba(255,255,255,0.45);
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+  box-sizing: border-box;
+}
+.grid-cell:hover            { background-color: rgba(255,255,255,0.18); }
+.grid-cell.selected         { background-color: rgba(37,99,235,0.42); border-color: rgba(37,99,235,0.85); }
+.grid-cell.correct-highlight{ background-color: rgba(22,163,74,0.55); border-color: rgba(22,163,74,0.9); }
+
+/* ── Ordered click markers ────────────────────────────────── */
+.click-marker {
+  position: absolute;
+  transform: translate(-50%,-50%);
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: rgba(37,99,235,0.9);
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 15px; font-weight: 700;
+  line-height: 28px; text-align: center;
+  cursor: pointer; user-select: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  z-index: 10;
+}
+.click-marker:hover { background: rgba(220,38,38,0.85); }
+.target-box {
+  position: absolute;
+  border: 3px solid rgba(22,163,74,0.9);
+  background: rgba(22,163,74,0.15);
+  box-sizing: border-box;
+}
+.target-box-label {
+  position: absolute;
+  top: 4px; left: 4px;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: rgba(22,163,74,0.9);
+  color: #fff; font-size: 14px; font-weight: 700;
+  line-height: 26px; text-align: center;
+}
+
+/* ── Symbol grid ──────────────────────────────────────────── */
+.sym-cell {
+  aspect-ratio: 1;
+  background: #fff;
+  border: 2px solid #dee2e6;
+  border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; user-select: none;
+  transition: background 0.07s, border-color 0.07s;
+  color: #333;
+}
+.sym-cell:hover             { border-color: #94a3b8; background: #f8fafc; }
+.sym-cell.selected          { background: #2563eb; border-color: #1d4ed8; color: #fff; }
+.sym-cell.selected:hover    { background: #1d4ed8; }
+.sym-cell.flash-wrong       { animation: flash-red 0.5s ease; }
+@keyframes flash-red {
+  0%,100% { border-color: #dee2e6; }
+  50%     { border-color: #ef4444; background: #fee2e2; color: #333; }
+}
+
+/* ── Answer buttons ───────────────────────────────────────── */
+.answer-btn {
+  padding: 0.8rem 1.25rem;
+  font-size: 1rem; text-align: left; width: 100%;
+  background: #f8f9fa; border: 2px solid #dee2e6;
+  border-radius: 8px; color: #333;
+  cursor: pointer; transition: background 0.1s, border-color 0.1s;
+}
+.answer-btn:hover:not(:disabled) { background: #e9ecef; border-color: #adb5bd; }
+.answer-btn:disabled { opacity: 0.55; cursor: default; }
+</style>
+
+<script>
+/* ── Constants ───────────────────────────────────────────── */
+var TASK_DURATION   = {{ duration_seconds }};
+var VIEWING_SECONDS = js_vars.viewing_seconds || 8;
+
+/* ── 8 symbol SVG paths (40×40 viewBox) ─────────────────── */
+var C = '<circle cx="20" cy="20" r="14" fill="none" stroke="currentColor" stroke-width="2.5"/>';
+var SYMBOL_PATHS = [
+  /* 0 plain  */ C,
+  /* 1 dot    */ C + '<circle cx="20" cy="20" r="3.2" fill="currentColor"/>',
+  /* 2 —      */ C + '<line x1="8" y1="20" x2="32" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  /* 3 |      */ C + '<line x1="20" y1="8" x2="20" y2="32" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  /* 4 \      */ C + '<line x1="11" y1="11" x2="29" y2="29" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  /* 5 /      */ C + '<line x1="29" y1="11" x2="11" y2="29" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  /* 6 +      */ C + '<line x1="8" y1="20" x2="32" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="8" x2="20" y2="32" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  /* 7 ×      */ C + '<line x1="11" y1="11" x2="29" y2="29" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="29" y1="11" x2="11" y2="29" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+];
+function makeSvg(idx, size) {
+  return '<svg viewBox="0 0 40 40" width="' + size + '" height="' + size +
+         '" aria-hidden="true">' + SYMBOL_PATHS[idx] + '</svg>';
+}
+
+/* ── Session timer ───────────────────────────────────────── */
+var timeRemaining = TASK_DURATION;
+var timerStarted  = false;
+
+function fmt(s) {
+  var m = Math.floor(s / 60), sec = s % 60;
+  return m + ':' + (sec < 10 ? '0' : '') + sec;
+}
+function startTimer() {
+  if (timerStarted) return;
+  timerStarted = true;
+  var display = document.getElementById('timer-display');
+  var bar     = document.getElementById('timer-bar');
+  display.textContent = fmt(timeRemaining);
+  var iv = setInterval(function () {
+    if (timeRemaining > 0) timeRemaining--;
+    display.textContent = fmt(timeRemaining);
+    var pct = timeRemaining / TASK_DURATION * 100;
+    bar.style.width = pct + '%';
+    bar.className = 'progress-bar ' +
+      (pct > 20 ? 'bg-success' : pct > 10 ? 'bg-warning' : 'bg-danger');
+    if (timeRemaining === 0) clearInterval(iv);
+  }, 1000);
+}
+
+/* ── Section switcher ────────────────────────────────────── */
+var SECTIONS = ['section-captcha', 'section-ordered', 'section-symbol'];
+function showSection(id) {
+  SECTIONS.forEach(function (s) {
+    document.getElementById(s).style.display = (s === id) ? '' : 'none';
+  });
+  var labels = {
+    'section-captcha': 'Image selection task',
+    'section-ordered': 'Image ordering task',
+    'section-symbol':  'Symbol search task',
+  };
+  document.getElementById('task-mode-label').textContent = labels[id] || 'Task';
+}
+
+/* ── Task dispatcher ─────────────────────────────────────── */
+function showTask(data) {
+  if (!data || !data.filename) {
+    SECTIONS.forEach(function (s) {
+      document.getElementById(s).style.display = 'none';
+    });
+    document.getElementById('pool-exhausted').style.removeProperty('display');
+    return;
+  }
+  if (data.task_mode === 'captcha') { showCaptcha(data); }
+  else if (data.task_mode === 'ordered') { showOrdered(data); }
+  else if (data.task_mode === 'symbol') { showSymbolImage(data); }
+}
+
+/* ════════════════════════════════════════════════════════════
+   CAPTCHA LOGIC
+   ════════════════════════════════════════════════════════════ */
+var captchaImageShownAt = null;
+
+function showCaptcha(data) {
+  showSection('section-captcha');
+
+  var img     = document.getElementById('captcha-image');
+  var spinner = document.getElementById('captcha-spinner');
+  var stack   = document.getElementById('captcha-image-stack');
+  var overlay = document.getElementById('captcha-grid-overlay');
+  var btn     = document.getElementById('captcha-submit-btn');
+
+  stack.style.display   = 'none';
+  overlay.style.display = 'none';
+  spinner.style.display = 'flex';
+  btn.disabled = true;
+  clearCaptchaSelections();
+  img.onload = img.onerror = null;
+
+  var fired = false;
+  function onReady() {
+    if (fired) return;
+    fired = true;
+    spinner.style.display = 'none';
+    stack.style.display   = 'grid';
+    overlay.style.display = 'grid';
+    btn.disabled = false;
+    startTimer();
+    captchaImageShownAt = Date.now();
+  }
+  img.onload  = onReady;
+  img.onerror = function () {
+    spinner.innerHTML = '<p class="text-danger small mb-0 p-3">Could not load: <code>' +
+      data.filename + '</code></p>';
+    startTimer();
+  };
+  img.src = '/static/images/' + data.filename;
+  if (img.complete && img.naturalWidth > 0) { onReady(); }
+
+  document.getElementById('captcha-question').textContent = data.question;
+  document.getElementById('captcha-counter').textContent =
+    (data.index + 1) + ' / ' + data.total;
+}
+
+function clearCaptchaSelections() {
+  document.querySelectorAll('.grid-cell').forEach(function (c) {
+    c.classList.remove('selected', 'correct-highlight');
+  });
+}
+
+function submitCaptcha() {
+  var selected = [];
+  document.querySelectorAll('.grid-cell.selected').forEach(function (c) {
+    selected.push(parseInt(c.dataset.cell));
+  });
+  selected.sort(function (a, b) { return a - b; });
+  if (selected.length === 0) {
+    alert('Please select at least one cell before submitting.');
+    return;
+  }
+  document.getElementById('captcha-submit-btn').disabled = true;
+  document.querySelectorAll('.grid-cell').forEach(function (c) {
+    c.style.pointerEvents = 'none';
+  });
+  liveSend({
+    task_mode: 'captcha',
+    type: 'submit_answer',
+    selected_cells: selected,
+    response_time_ms: captchaImageShownAt ? Date.now() - captchaImageShownAt : 0,
+  });
+}
+
+/* Grid cell click toggle */
+document.querySelectorAll('.grid-cell').forEach(function (cell) {
+  cell.addEventListener('click', function () {
+    this.classList.toggle('selected');
+  });
+});
+
+/* ════════════════════════════════════════════════════════════
+   ORDERED LOGIC
+   ════════════════════════════════════════════════════════════ */
+var orderedImageShownAt = null;
+var clickSequence       = [];
+var NUM_TARGETS         = 0;
+
+function showOrdered(data) {
+  showSection('section-ordered');
+
+  var img     = document.getElementById('ordered-image');
+  var spinner = document.getElementById('ordered-spinner');
+  var stack   = document.getElementById('ordered-image-stack');
+  var fbLayer = document.getElementById('ordered-feedback-layer');
+
+  stack.style.display   = 'none';
+  fbLayer.style.display = 'none';
+  fbLayer.innerHTML     = '';
+  spinner.style.display = 'flex';
+  clearMarkers();
+  img.onload = img.onerror = null;
+
+  NUM_TARGETS = data.num_targets || 1;
+  document.getElementById('ordered-num-targets').textContent = NUM_TARGETS;
+  document.getElementById('ordered-click-layer').style.pointerEvents = '';
+
+  var fired = false;
+  function onReady() {
+    if (fired) return;
+    fired = true;
+    spinner.style.display = 'none';
+    stack.style.display   = 'grid';
+    startTimer();
+    orderedImageShownAt = Date.now();
+  }
+  img.onload  = onReady;
+  img.onerror = function () {
+    spinner.innerHTML = '<p class="text-danger small mb-0 p-3">Could not load: <code>' +
+      data.filename + '</code></p>';
+    startTimer();
+  };
+  img.src = '/static/images/' + data.filename;
+  if (img.complete && img.naturalWidth > 0) { onReady(); }
+
+  document.getElementById('ordered-question').textContent = data.question;
+  document.getElementById('ordered-counter').textContent =
+    (data.index + 1) + ' / ' + data.total;
+}
+
+function renderMarkers() {
+  var layer = document.getElementById('ordered-click-layer');
+  layer.querySelectorAll('.click-marker').forEach(function (m) { m.remove(); });
+  clickSequence.forEach(function (pt, i) {
+    var marker = document.createElement('div');
+    marker.className = 'click-marker';
+    marker.style.left = (pt.x * 100) + '%';
+    marker.style.top  = (pt.y * 100) + '%';
+    marker.textContent = i + 1;
+    marker.dataset.index = i;
+    marker.addEventListener('click', function (e) {
+      e.stopPropagation();
+      clickSequence.splice(parseInt(this.dataset.index), 1);
+      renderMarkers();
+      updateOrderedSubmit();
+    });
+    layer.appendChild(marker);
+  });
+  document.getElementById('ordered-click-count').textContent = clickSequence.length;
+  updateOrderedSubmit();
+}
+
+function updateOrderedSubmit() {
+  document.getElementById('ordered-submit-btn').disabled =
+    (NUM_TARGETS === 0 || clickSequence.length !== NUM_TARGETS);
+}
+
+function clearMarkers() {
+  clickSequence = [];
+  renderMarkers();
+}
+
+function showOrderedFeedbackBoxes(targets) {
+  var layer = document.getElementById('ordered-feedback-layer');
+  layer.innerHTML = '';
+  layer.style.display = 'block';
+  targets.forEach(function (t, i) {
+    var b = t.box;
+    var box = document.createElement('div');
+    box.className = 'target-box';
+    box.style.left   = (b[0] * 100) + '%';
+    box.style.top    = (b[1] * 100) + '%';
+    box.style.width  = ((b[2] - b[0]) * 100) + '%';
+    box.style.height = ((b[3] - b[1]) * 100) + '%';
+    var lbl = document.createElement('div');
+    lbl.className = 'target-box-label';
+    lbl.textContent = i + 1;
+    box.appendChild(lbl);
+    layer.appendChild(box);
+  });
+}
+
+document.getElementById('ordered-click-layer').addEventListener('click', function (e) {
+  if (clickSequence.length >= NUM_TARGETS) return;
+  var x = e.offsetX / this.offsetWidth;
+  var y = e.offsetY / this.offsetHeight;
+  clickSequence.push({x: x, y: y});
+  renderMarkers();
+});
+
+function submitOrdered() {
+  document.getElementById('ordered-submit-btn').disabled = true;
+  document.getElementById('ordered-click-layer').style.pointerEvents = 'none';
+  liveSend({
+    task_mode: 'ordered',
+    type: 'submit_answer',
+    click_sequence: clickSequence,
+    response_time_ms: orderedImageShownAt ? Date.now() - orderedImageShownAt : 0,
+  });
+}
+
+/* ════════════════════════════════════════════════════════════
+   SYMBOL LOGIC
+   ════════════════════════════════════════════════════════════ */
+var symCurrentData     = null;
+var symSelectedCells   = [];
+var symSymbolStartedAt = null;
+var symAnswerStartedAt = null;
+var symViewingInterval = null;
+
+function showSymbolImage(data) {
+  symCurrentData   = data;
+  symSelectedCells = [];
+  showSection('section-symbol');
+
+  document.getElementById('sym-phase-1').style.display = '';
+  document.getElementById('sym-phase-2').style.display = 'none';
+  document.getElementById('sym-phase-3').style.display = 'none';
+
+  var img     = document.getElementById('sym-task-image');
+  var spinner = document.getElementById('sym-spinner');
+  spinner.style.display = 'flex';
+  img.style.display     = 'none';
+  img.onload = img.onerror = null;
+
+  document.getElementById('sym-question-preview').textContent = data.question || '—';
+  document.getElementById('sym-counter').textContent =
+    (data.index + 1) + ' / ' + data.total;
+
+  var fired = false;
+  function onReady() {
+    if (fired) return;
+    fired = true;
+    spinner.style.display = 'none';
+    img.style.display     = 'block';
+    startTimer();
+    startViewingCountdown();
+  }
+  img.onload  = onReady;
+  img.onerror = function () {
+    spinner.innerHTML = '<p class="text-danger small mb-0 p-3">Could not load: <code>' +
+      data.filename + '</code></p>';
+    startTimer();
+    startViewingCountdown();
+  };
+  img.src = '/static/images/' + data.filename;
+  if (img.complete && img.naturalWidth > 0) { onReady(); }
+}
+
+function startViewingCountdown() {
+  clearInterval(symViewingInterval);
+  var remaining = VIEWING_SECONDS;
+  var span      = document.getElementById('sym-viewing-countdown');
+  span.textContent = remaining;
+  span.style.color = '';
+  symViewingInterval = setInterval(function () {
+    remaining--;
+    span.textContent = Math.max(0, remaining);
+    if (remaining <= 3) span.style.color = '#dc2626';
+    if (remaining <= 0) {
+      clearInterval(symViewingInterval);
+      startSymbolPhase();
+    }
+  }, 1000);
+}
+
+function startSymbolPhase() {
+  document.getElementById('sym-phase-1').style.display = 'none';
+  document.getElementById('sym-phase-2').style.display = '';
+  document.getElementById('sym-error').style.display   = 'none';
+
+  symSymbolStartedAt = Date.now();
+  symSelectedCells   = [];
+  document.getElementById('sym-selected-count').textContent = '0';
+
+  document.getElementById('sym-target-display').innerHTML =
+    makeSvg(symCurrentData.target_symbol, 44);
+
+  var grid = document.getElementById('sym-grid');
+  grid.innerHTML = '';
+  symCurrentData.symbol_grid.forEach(function (symIdx, cellIdx) {
+    var cell = document.createElement('div');
+    cell.className = 'sym-cell';
+    cell.dataset.idx = cellIdx;
+    cell.innerHTML = makeSvg(symIdx, 20);
+    cell.addEventListener('click', function () {
+      var i   = parseInt(this.dataset.idx);
+      var pos = symSelectedCells.indexOf(i);
+      if (pos === -1) {
+        symSelectedCells.push(i);
+        this.classList.add('selected');
+      } else {
+        symSelectedCells.splice(pos, 1);
+        this.classList.remove('selected');
+      }
+      document.getElementById('sym-selected-count').textContent = symSelectedCells.length;
+      document.getElementById('sym-error').style.display = 'none';
+    });
+    grid.appendChild(cell);
+  });
+}
+
+function submitSymbol() {
+  var clicked = symSelectedCells.slice().sort(function (a, b) { return a - b; });
+  var target  = symCurrentData.target_cells.slice().sort(function (a, b) { return a - b; });
+
+  if (JSON.stringify(clicked) !== JSON.stringify(target)) {
+    var errDiv  = document.getElementById('sym-error');
+    var nMissed = target.filter(function (i) { return clicked.indexOf(i) === -1; }).length;
+    var nExtra  = clicked.filter(function (i) { return target.indexOf(i) === -1; }).length;
+    errDiv.textContent = 'Not quite right — clear your selection and try again.';
+    if (nMissed > 0 && nExtra === 0) {
+      errDiv.textContent = 'You missed some — clear your selection and try again.';
+    } else if (nExtra > 0 && nMissed === 0) {
+      errDiv.textContent = 'You selected too many — clear your selection and try again.';
+    }
+    errDiv.style.display = 'block';
+    var cells = document.querySelectorAll('#sym-grid .sym-cell');
+    clicked.forEach(function (i) {
+      if (target.indexOf(i) === -1) {
+        cells[i].classList.add('flash-wrong');
+        setTimeout(function () { cells[i].classList.remove('flash-wrong'); }, 600);
+      }
+    });
+    symSelectedCells = [];
+    cells.forEach(function (c) { c.classList.remove('selected'); });
+    document.getElementById('sym-selected-count').textContent = '0';
+    return;
+  }
+
+  document.getElementById('sym-error').style.display = 'none';
+  document.getElementById('sym-phase-2').style.display = 'none';
+  document.getElementById('sym-phase-3').style.display = '';
+
+  symAnswerStartedAt = Date.now();
+  document.getElementById('sym-answer-question').textContent = symCurrentData.question;
+
+  var container = document.getElementById('sym-answer-options');
+  container.innerHTML = '';
+  (symCurrentData.answer_options || []).forEach(function (opt) {
+    var btn = document.createElement('button');
+    btn.type      = 'button';
+    btn.className = 'answer-btn';
+    btn.textContent = opt;
+    btn.addEventListener('click', function () { submitSymbolAnswer(opt); });
+    container.appendChild(btn);
+  });
+}
+
+function submitSymbolAnswer(answer) {
+  document.querySelectorAll('.answer-btn').forEach(function (b) { b.disabled = true; });
+  liveSend({
+    task_mode:        'symbol',
+    type:             'submit_answer',
+    answer:           answer,
+    target_symbol:    symCurrentData.target_symbol,
+    target_cells:     symCurrentData.target_cells,
+    clicked_cells:    symSelectedCells.slice().sort(function (a, b) { return a - b; }),
+    symbol_time_ms:   symSymbolStartedAt ? Date.now() - symSymbolStartedAt : 0,
+    response_time_ms: symAnswerStartedAt ? Date.now() - symAnswerStartedAt : 0,
+  });
+}
+
+/* ── Server messages ─────────────────────────────────────── */
+function liveRecv(data) {
+  var overlay = document.getElementById('feedback-overlay');
+  var icon    = document.getElementById('feedback-icon');
+  var text    = document.getElementById('feedback-text');
+
+  if (data.type === 'retry') {
+    // Symbol wrong answer — redo from image study
+    icon.textContent   = '✗';
+    icon.style.color   = 'rgba(248,113,113,1)';
+    text.textContent   = 'Incorrect — please study the image again and try once more.';
+    overlay.style.display = 'flex';
+    setTimeout(function () {
+      overlay.style.display = 'none';
+      showSymbolImage(data.same_image);
+    }, 2200);
+    return;
+  }
+
+  if (data.type === 'feedback') {
+    var taskMode = data.task_mode;
+
+    if (taskMode === 'captcha') {
+      // Show correct cells briefly, then flash ✓/✗ inline, then load next
+      if (data.correct_cells) {
+        data.correct_cells.forEach(function (n) {
+          var cell = document.querySelector('.grid-cell[data-cell="' + n + '"]');
+          if (cell) cell.classList.add('correct-highlight');
+        });
+      }
+      var fbInline = document.getElementById('captcha-feedback-overlay');
+      fbInline.textContent   = data.is_correct ? '✓' : '✗';
+      fbInline.style.color   = data.is_correct ? 'rgba(22,163,74,0.9)' : 'rgba(220,38,38,0.9)';
+      fbInline.style.display = 'flex';
+      setTimeout(function () {
+        fbInline.style.display = 'none';
+        document.querySelectorAll('.grid-cell').forEach(function (c) {
+          c.style.pointerEvents = '';
+        });
+        showTask(data.next_image);
+      }, 1200);
+    }
+
+    else if (taskMode === 'ordered') {
+      showOrderedFeedbackBoxes(data.targets || []);
+      var fbInline2 = document.getElementById('ordered-feedback-overlay');
+      fbInline2.textContent   = data.is_correct ? '✓' : '✗';
+      fbInline2.style.color   = data.is_correct ? 'rgba(22,163,74,0.9)' : 'rgba(220,38,38,0.9)';
+      fbInline2.style.display = 'flex';
+      setTimeout(function () {
+        fbInline2.style.display = 'none';
+        showTask(data.next_image);
+      }, 1800);
+    }
+
+    else if (taskMode === 'symbol') {
+      // Correct answer
+      icon.textContent   = '✓';
+      icon.style.color   = 'rgba(52,211,153,1)';
+      text.textContent   = 'Correct!';
+      overlay.style.display = 'flex';
+      setTimeout(function () {
+        overlay.style.display = 'none';
+        showTask(data.next_image);
+      }, 1500);
+    }
+  }
+}
+
+/* ── Keyboard: Ctrl/Cmd+Enter to submit ─────────────────── */
+document.addEventListener('keydown', function (e) {
+  if (!(e.key === 'Enter' && (e.ctrlKey || e.metaKey))) return;
+  var mode = document.getElementById('section-captcha').style.display !== 'none' ? 'captcha'
+           : document.getElementById('section-ordered').style.display !== 'none' ? 'ordered'
+           : null;
+  if (mode === 'captcha') {
+    var btn = document.getElementById('captcha-submit-btn');
+    if (!btn.disabled) submitCaptcha();
+  } else if (mode === 'ordered') {
+    var btn2 = document.getElementById('ordered-submit-btn');
+    if (!btn2.disabled) submitOrdered();
+  }
+});
+
+/* ── Init ────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', function () {
+  var first = js_vars.first_image;
+  if (first && first.filename) {
+    showTask(first);
+  }
+});
+</script>
+{{ endblock }}

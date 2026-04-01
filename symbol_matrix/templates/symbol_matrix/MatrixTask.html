@@ -1,0 +1,181 @@
+{{ block title }}Symbol Task{{ endblock }}
+
+{{ block styles }}
+<link rel="stylesheet" href="/static/katex/katex.min.css">
+<style>
+  /* Hide oTree's built-in countdown timer — participants do not see remaining time */
+  #otree-timeout { display: none !important; }
+
+  body { background: #f8f9fa; }
+
+  .task-card {
+    max-width: 700px;
+    margin: 1.5rem auto;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.10);
+    padding: 1.5rem 2rem 2rem;
+  }
+
+  /* ---- Target display ---- */
+  .task-prompt {
+    font-size: 1.1rem;
+    color: #444;
+    margin-bottom: 0.5rem;
+  }
+
+  .target-box {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 80px;
+    min-height: 80px;
+    border: 3px solid #0d6efd;
+    border-radius: 10px;
+    background: #e8f0fe;
+    font-size: 3rem;
+    padding: 0.5rem 1.2rem;
+    margin: 0.6rem 0 1.2rem;
+  }
+
+  /* ---- 8×8 grid ---- */
+  .sym-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    margin-bottom: 1.2rem;
+    user-select: none;
+  }
+
+  .sym-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    font-size: 1.15rem;
+    border: 2px solid #dee2e6;
+    border-radius: 6px;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: background 0.08s, border-color 0.08s;
+  }
+
+  .sym-cell:hover {
+    background: #e2e6ea;
+    border-color: #adb5bd;
+  }
+
+  .sym-cell.selected {
+    background: #cfe2ff;
+    border-color: #0d6efd;
+    box-shadow: inset 0 0 0 1px #0d6efd;
+  }
+
+  /* ---- Confirm button ---- */
+  #confirm-btn {
+    width: 100%;
+    padding: 0.65rem;
+    font-size: 1.05rem;
+  }
+
+  /* Loading placeholder */
+  #loading-msg {
+    text-align: center;
+    color: #888;
+    padding: 3rem 0;
+    font-size: 1.1rem;
+  }
+</style>
+{{ endblock }}
+
+{{ block content }}
+<div class="task-card">
+
+  <div id="loading-msg">Loading task&hellip;</div>
+
+  <div id="task-container" style="display:none;">
+
+    <p class="task-prompt">Select all symbols that match this one:</p>
+
+    <div id="target-display" class="target-box"></div>
+
+    <div id="sym-grid" class="sym-grid"></div>
+
+    <button type="button" id="confirm-btn" class="btn btn-primary">
+      Confirm Selection
+    </button>
+
+  </div>
+
+</div>
+
+<script src="/static/katex/katex.min.js"></script>
+<script>
+// State — module-level so liveRecv is in global scope (required by oTree)
+var _currentTask   = null;
+var _selectedCells = new Set();
+var _taskStartTime = null;
+
+function renderLatex(latex, displayMode) {
+  try {
+    return katex.renderToString(latex, { displayMode: displayMode, throwOnError: false });
+  } catch (e) {
+    return '<span style="color:red">?</span>';
+  }
+}
+
+function showTask(task) {
+  _currentTask   = task;
+  _selectedCells = new Set();
+  _taskStartTime = Date.now();
+
+  document.getElementById('target-display').innerHTML =
+    renderLatex(task.target.latex, true);
+
+  var grid = document.getElementById('sym-grid');
+  grid.innerHTML = '';
+  task.grid.forEach(function (sym, idx) {
+    var cell = document.createElement('div');
+    cell.className = 'sym-cell';
+    cell.innerHTML = renderLatex(sym.latex, false);
+    cell.addEventListener('click', function () {
+      if (_selectedCells.has(idx)) {
+        _selectedCells.delete(idx);
+        cell.classList.remove('selected');
+      } else {
+        _selectedCells.add(idx);
+        cell.classList.add('selected');
+      }
+    });
+    grid.appendChild(cell);
+  });
+
+  document.getElementById('loading-msg').style.display    = 'none';
+  document.getElementById('task-container').style.display = '';
+}
+
+// oTree calls this when a message arrives from the server
+function liveRecv(data) {
+  if (data.type === 'task' || data.type === 'next_task') {
+    showTask(data.task);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  document.getElementById('confirm-btn').addEventListener('click', function () {
+    if (!_currentTask) return;
+    var clicked = Array.from(_selectedCells).sort(function (a, b) { return a - b; });
+    liveSend({
+      type:          'submit_answer',
+      clicked_cells: clicked,
+      target_latex:  _currentTask.target.latex,
+      time_taken_ms: Date.now() - _taskStartTime,
+    });
+    document.getElementById('task-container').style.display = 'none';
+    document.getElementById('loading-msg').style.display    = '';
+  });
+
+  liveSend({ type: 'request_task' });
+});
+</script>
+{{ endblock }}
