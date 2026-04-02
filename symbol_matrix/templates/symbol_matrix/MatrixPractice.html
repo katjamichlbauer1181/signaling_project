@@ -46,6 +46,7 @@
     text-align: center;
   }
   #banner.well-done #b-text { color: #15803d; }
+  #banner.wrong-ans #b-text { color: #b91c1c; }
 
   /* ── Task card (fills remaining space) ────────────────────────── */
   #inner-card {
@@ -213,7 +214,16 @@ function sizeGrid() {
   grid.style.fontSize  = Math.max(9, Math.round(cell * 0.30)) + 'px';
 }
 
-function showTask(task) {
+function setBanner(state, icon, text) {
+  // state: 'neutral' | 'well-done' | 'wrong-ans'
+  var banner = document.getElementById('banner');
+  banner.classList.remove('well-done', 'wrong-ans');
+  if (state !== 'neutral') banner.classList.add(state);
+  document.getElementById('b-icon').textContent = icon;
+  document.getElementById('b-text').textContent = text;
+}
+
+function showTask(task, feedbackState) {
   _trial++;
   _selected = new Set();
   _startMs  = Date.now();
@@ -238,30 +248,44 @@ function showTask(task) {
     grid.appendChild(cell);
   });
 
-  document.getElementById('loading-msg').style.display  = 'none';
-  document.getElementById('task-container').style.display = 'flex';
-  document.getElementById('task-container').style.flexDirection = 'column';
-  document.getElementById('task-container').style.flex   = '1';
-  document.getElementById('task-container').style.minHeight = '0';
+  document.getElementById('loading-msg').style.display    = 'none';
+  var tc = document.getElementById('task-container');
+  tc.style.display        = 'flex';
+  tc.style.flexDirection  = 'column';
+  tc.style.flex           = '1';
+  tc.style.minHeight      = '0';
   document.getElementById('confirm-btn').disabled = false;
 
-  if (_trial === 2) {
-    var banner = document.getElementById('banner');
-    banner.classList.add('well-done');
-    document.getElementById('b-icon').textContent = '✅';
-    document.getElementById('b-text').textContent = 'Well done! Try once more before we begin.';
+  if (feedbackState === 'correct') {
+    setBanner('well-done', '✅', 'Well done! Try once more before we begin.');
+  } else if (feedbackState === 'wrong') {
+    setBanner('wrong-ans', '❌', 'Not quite — but keep going, the real task works the same way.');
+  } else {
+    setBanner('neutral', '🧪', 'Practice round — no data is recorded');
   }
 
   requestAnimationFrame(sizeGrid);
 }
 
 function liveRecv(data) {
-  if (data.type === 'task' || data.type === 'next_task') {
-    showTask(data.task);
+  if (data.type === 'task') {
+    showTask(data.task, null);
+  }
+  if (data.type === 'next_task') {
+    var feedback = data.is_correct ? 'correct' : 'wrong';
+    showTask(data.task, feedback);
   }
   if (data.type === 'practice_complete') {
-    var real = document.querySelector('#real-next button, #real-next input[type=submit]');
-    if (real) real.click();
+    // Brief banner before auto-advancing
+    if (data.is_correct) {
+      setBanner('well-done', '✅', 'Well done! Moving on…');
+    } else {
+      setBanner('wrong-ans', '❌', 'Not quite — moving on to the real task.');
+    }
+    setTimeout(function() {
+      var real = document.querySelector('#real-next button, #real-next input[type=submit]');
+      if (real) real.click();
+    }, 900);
   }
 }
 
@@ -277,11 +301,13 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.dcell').forEach(function(c) { c.classList.add('locked'); });
     document.getElementById('task-container').style.display = 'none';
     document.getElementById('loading-msg').style.display    = '';
-    document.getElementById('banner').classList.remove('well-done');
-    document.getElementById('b-icon').textContent = '🧪';
-    document.getElementById('b-text').textContent = 'Practice round — no data is recorded';
+    setBanner('neutral', '🧪', 'Practice round — no data is recorded');
 
-    liveSend({ type: 'submit_practice', trial: _trial });
+    liveSend({
+      type:          'submit_practice',
+      trial:         _trial,
+      clicked_cells: Array.from(_selected).sort(function(a, b) { return a - b; }),
+    });
   });
 
   liveSend({ type: 'request_task' });

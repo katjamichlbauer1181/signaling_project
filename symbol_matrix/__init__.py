@@ -1263,22 +1263,38 @@ class CombinedTask2(Page):
 
 
 def _matrix_practice_live_method(player, data):
-    """Serves practice trials — same grid generation, no data recorded."""
+    """Serves practice trials — same grid generation, no data recorded.
+
+    Validates the submitted answer and returns is_correct so the client
+    can show appropriate feedback, but always advances regardless.
+    """
     msg_type = data.get('type')
 
     if msg_type == 'request_task':
         task = _generate_matrix_task()
+        # Store correct cells server-side so the client cannot fake a correct answer
+        player.matrix_current_correct_cells = json.dumps(task['correct_cells'])
         return {player.id_in_group: {'type': 'task', 'task': task}}
 
     if msg_type == 'submit_practice':
         trial = data.get('trial', 1)
+        clicked = sorted(data.get('clicked_cells', []))
+        correct = sorted(json.loads(player.matrix_current_correct_cells))
+        is_correct = (clicked == correct)
+
         if trial == 1:
-            # Send second practice trial
             task = _generate_matrix_task()
-            return {player.id_in_group: {'type': 'next_task', 'task': task}}
+            player.matrix_current_correct_cells = json.dumps(task['correct_cells'])
+            return {player.id_in_group: {
+                'type': 'next_task',
+                'is_correct': is_correct,
+                'task': task,
+            }}
         else:
-            # Both practice trials done — tell client to advance the page
-            return {player.id_in_group: {'type': 'practice_complete'}}
+            return {player.id_in_group: {
+                'type': 'practice_complete',
+                'is_correct': is_correct,
+            }}
 
     return {}
 
