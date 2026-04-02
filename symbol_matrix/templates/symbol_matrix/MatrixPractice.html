@@ -167,7 +167,7 @@
 
   <div id="banner">
     <span id="b-icon">🧪</span>
-    <span id="b-text">Practice round — no data is recorded</span>
+    <span id="b-text">Practice round</span>
   </div>
 
   <div id="inner-card">
@@ -261,7 +261,7 @@ function showTask(task, feedbackState) {
   } else if (feedbackState === 'wrong') {
     setBanner('wrong-ans', '❌', 'Not quite — but keep going, the real task works the same way.');
   } else {
-    setBanner('neutral', '🧪', 'Practice round — no data is recorded');
+    setBanner('neutral', '🧪', 'Practice round');
   }
 
   requestAnimationFrame(sizeGrid);
@@ -285,7 +285,7 @@ function liveRecv(data) {
     setTimeout(function() {
       var real = document.querySelector('#real-next button, #real-next input[type=submit]');
       if (real) real.click();
-    }, 900);
+    }, 1800);
   }
 }
 
@@ -301,7 +301,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.dcell').forEach(function(c) { c.classList.add('locked'); });
     document.getElementById('task-container').style.display = 'none';
     document.getElementById('loading-msg').style.display    = '';
-    setBanner('neutral', '🧪', 'Practice round — no data is recorded');
+    setBanner('neutral', '🧪', 'Practice round');
 
     liveSend({
       type:          'submit_practice',
