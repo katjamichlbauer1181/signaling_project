@@ -1486,7 +1486,16 @@ class FieldIDEntry(Page):
         return player.session.config.get('task_type') == 'matrix'
 
     @staticmethod
+    def error_message(player, values):
+        fid = (values.get('field_id') or '').strip()
+        if not fid.isdigit() or len(fid) != 3:
+            return 'Please enter a valid 3-digit Field ID (e.g. 101, 215, 302).'
+        if fid[0] not in ('1', '2', '3'):
+            return 'Field ID must start with 1, 2, or 3. Please check with the research assistant.'
+
+    @staticmethod
     def before_next_page(player, timeout_happened):
+        player.field_id = player.field_id.strip()
         player.condition = _get_condition(player)
 
 
