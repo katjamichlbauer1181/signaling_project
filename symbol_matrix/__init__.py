@@ -1489,6 +1489,11 @@ class Goodbye(Page):
             'total_credits':       total_credits,
             'final_payoff':        player.final_payoff_dollars,
             'break_choice':        player.field_maybe_none('break_choice'),
+            'condition':           player.field_maybe_none('condition') or 'choice',
+            'task_minutes':        player.session.config.get('task_minutes',  C.TASK_MINUTES_DEFAULT),
+            'break_minutes':       player.session.config.get('break_minutes', C.BREAK_MINUTES_DEFAULT),
+            'seg1_total_minutes':  (player.session.config.get('task_minutes',  C.TASK_MINUTES_DEFAULT) +
+                                    player.session.config.get('break_minutes', C.BREAK_MINUTES_DEFAULT)),
             # Pre-formatted dollar strings (avoids Jinja2 filter issues)
             'seg1_bridge_dollars': '{:.3f}'.format(player.payoff_seg1_bridge_credits * 0.004),
             'seg2_dollars':        '{:.3f}'.format(player.payoff_seg2_credits * 0.004),
@@ -1534,10 +1539,13 @@ class Consent(Page):
 
     @staticmethod
     def vars_for_template(player):
+        task_minutes  = player.session.config.get('task_minutes',  C.TASK_MINUTES_DEFAULT)
+        break_minutes = player.session.config.get('break_minutes', C.BREAK_MINUTES_DEFAULT)
         return {
-            'task_minutes':  player.session.config.get('task_minutes',  C.TASK_MINUTES_DEFAULT),
-            'break_minutes': player.session.config.get('break_minutes', C.BREAK_MINUTES_DEFAULT),
-            'condition':     player.field_maybe_none('condition') or 'choice',
+            'task_minutes':       task_minutes,
+            'break_minutes':      break_minutes,
+            'seg1_total_minutes': task_minutes + break_minutes,
+            'condition':          player.field_maybe_none('condition') or 'choice',
         }
 
     @staticmethod

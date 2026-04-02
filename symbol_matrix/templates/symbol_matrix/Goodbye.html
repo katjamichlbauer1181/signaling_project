@@ -25,7 +25,13 @@
               </tr>
               <tr>
                 <td>
-                  Session 1{% if break_choice == False %} + break{% endif %}
+                  {% if condition == 'no_break' %}
+                    Session 1 ({{ seg1_total_minutes }} minutes)
+                  {% elif break_choice == False %}
+                    Session 1 + break
+                  {% else %}
+                    Session 1
+                  {% endif %}
                   &nbsp;<small class="text-muted">({{ seg1_bridge_credits }} tokens × $0.004)</small>
                 </td>
                 <td class="text-end">${{ seg1_bridge_dollars }}</td>

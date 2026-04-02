@@ -116,11 +116,21 @@
       </p>
       <ul>
         <li>
-          <strong>Session 1{% if condition != 'forced_break' %} (and the break period if you work through it){% endif %}:</strong>
+          {% if condition == 'no_break' %}
+            <strong>Session 1 ({{ seg1_total_minutes }} minutes):</strong>
+          {% elif condition == 'choice' %}
+            <strong>Session 1 (and the break period if you work through it):</strong>
+          {% else %}
+            <strong>Session 1:</strong>
+          {% endif %}
           1 token per correct task &mdash; each token is worth <strong>$0.004</strong>.
         </li>
         <li>
-          <strong>Session 2:</strong>
+          {% if condition == 'no_break' %}
+            <strong>Session 2 ({{ task_minutes }} minutes):</strong>
+          {% else %}
+            <strong>Session 2:</strong>
+          {% endif %}
           2 tokens per correct task &mdash; each token is worth $0.004,
           so <strong>$0.008 per correct task</strong>.
         </li>
