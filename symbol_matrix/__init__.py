@@ -1,133 +1,26 @@
-import csv
+"""
+__init__.py
+oTree entry point for the symbol_matrix app.
+Contains: oTree models (C, Subsession, Group, Player, ExtraModels),
+          all live-method handlers, page classes, page_sequence, and custom_export.
+For data loading see data_loaders.py. For task generation see task_logic.py.
+"""
 import json
-import os
 import random
 import time
 
 from otree.api import *
 
-doc = """
-Symbol Matrix Task experiment.
-
-Participants complete an 8×8 symbol-matching task in two timed sessions separated
-by an optional break. On each trial they see a target symbol and must select all
-matching symbols from a grid of 64.  No feedback is shown — the next trial loads
-immediately after confirmation.
-
-Symbol pool is loaded from symbols.csv at the project root; swap that file at any
-time (the code reads it fresh on server restart).
-
-Session config keys:
-  task_type     (str)  — 'matrix' for this experiment; legacy values still work
-  task_minutes  (int)  — duration of each task segment   (default 40)
-  break_minutes (int)  — duration of break / bridge      (default 10)
-"""
-
-
-# ---------------------------------------------------------------------------
-# Data loading
-# ---------------------------------------------------------------------------
-
-def _load_image_data():
-    csv_path = os.path.join(os.path.dirname(__file__), 'images_data.csv')
-    if not os.path.exists(csv_path):
-        return []
-    images = []
-    with open(csv_path, newline='', encoding='utf-8') as f:
-        for row in csv.DictReader(f):
-            images.append({'filename': row['filename'].strip(),
-                           'question':  row['question'].strip()})
-    return images
-
-
-def _load_captcha_data():
-    csv_path = os.path.join(os.path.dirname(__file__), '..', 'images_data_captcha.csv')
-    if not os.path.exists(csv_path):
-        return []
-    images = []
-    with open(csv_path, newline='', encoding='utf-8') as f:
-        for row in csv.DictReader(f):
-            images.append({
-                'filename':      row['filename'].strip(),
-                'question':      row['question'].strip(),
-                'target_object': row.get('target_object', '').strip(),
-                'correct_cells': row.get('correct_cells', '[]').strip(),
-            })
-    return images
-
-
-def _load_ordered_data():
-    csv_path = os.path.join(os.path.dirname(__file__), '..', 'images_data_ordered.csv')
-    if not os.path.exists(csv_path):
-        return []
-    images = []
-    with open(csv_path, newline='', encoding='utf-8') as f:
-        for row in csv.DictReader(f):
-            images.append({
-                'filename': row['filename'].strip(),
-                'question': row['question'].strip(),
-                'targets':  row.get('targets', '[]').strip(),
-            })
-    return images
-
-
-def _load_symbol_data():
-    csv_path = os.path.join(os.path.dirname(__file__), '..', 'images_data_symbol.csv')
-    if not os.path.exists(csv_path):
-        return []
-    images = []
-    with open(csv_path, newline='', encoding='utf-8') as f:
-        for row in csv.DictReader(f):
-            images.append({
-                'filename':       row['filename'].strip(),
-                'question':       row['question'].strip(),
-                'answer_options': row.get('answer_options', '[]').strip(),
-                'correct_answer': row.get('correct_answer', '').strip(),
-            })
-    return images
-
-
-def _load_pure_symbols():
-    """Load the symbol database from symbols.csv at the project root.
-
-    Required columns: symbol_id (int), latex (str), category (str)
-    Add, remove, or swap rows in that file; restart the server to apply changes.
-    Falls back to 8 Greek letters if the file is missing (dev convenience only).
-    """
-    csv_path = os.path.join(os.path.dirname(__file__), '..', 'symbols.csv')
-    if not os.path.exists(csv_path):
-        fallback = [
-            (1, r'\alpha'), (2, r'\beta'),   (3, r'\gamma'), (4, r'\delta'),
-            (5, r'\epsilon'),(6, r'\zeta'), (7, r'\eta'),   (8, r'\theta'),
-        ]
-        return [{'symbol_id': sid, 'latex': latex, 'category': 'fallback'}
-                for sid, latex in fallback]
-    symbols = []
-    with open(csv_path, newline='', encoding='utf-8') as f:
-        for row in csv.DictReader(f):
-            symbols.append({
-                'symbol_id': int(row['symbol_id']),
-                'latex':     row['latex'].strip(),
-                'category':  row.get('category', '').strip(),
-            })
-    return symbols
-
-
-IMAGE_DATA       = _load_image_data()
-CAPTCHA_DATA     = _load_captcha_data()
-ORDERED_DATA     = _load_ordered_data()
-SYMBOL_DATA      = _load_symbol_data()
-PURE_SYMBOL_DATA = _load_pure_symbols()
-
-# Legacy symbol-grid constants
-NUM_SYMBOL_TYPES    = 8
-SYMBOL_GRID_SIZE    = 64
-NUM_TARGETS_IN_GRID = 8
-
-# Matrix task constants
-MATRIX_GRID_SIZE   = 64   # 8 × 8
-MATRIX_MIN_TARGETS = 1
-MATRIX_MAX_TARGETS = 10
+from .data_loaders import (
+    IMAGE_DATA, CAPTCHA_DATA, ORDERED_DATA, SYMBOL_DATA,
+    PURE_SYMBOL_DATA, PURE_SYMBOL_GROUPS,
+)
+from .task_logic import (
+    MATRIX_GRID_SIZE, MATRIX_MIN_TARGETS, MATRIX_MAX_TARGETS,
+    NUM_SYMBOL_TYPES, SYMBOL_GRID_SIZE, NUM_TARGETS_IN_GRID,
+    _task_duration, _break_duration, _get_condition,
+    _generate_matrix_task, _generate_symbol_grid, _point_in_box,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -397,34 +290,6 @@ class MatrixAnswer(ExtraModel):
 
 
 # ---------------------------------------------------------------------------
-# Helpers — timing
-# ---------------------------------------------------------------------------
-
-def _task_duration(player):
-    return int(player.session.config.get('task_minutes',  C.TASK_MINUTES_DEFAULT)  * 60)
-
-
-def _break_duration(player):
-    return int(player.session.config.get('break_minutes', C.BREAK_MINUTES_DEFAULT) * 60)
-
-
-def _get_condition(player):
-    """Derive experimental condition from field_id.
-
-    Field IDs starting with '1' → no_break   (40 + 10 work + 40, no choice)
-    Field IDs starting with '2' → forced_break (40 + 10 break + 40, no choice)
-    Field IDs starting with '3' → choice       (40 + choose break/work + 40)
-    Any other value              → choice       (safe default)
-    """
-    fid = (player.field_maybe_none('field_id') or '').strip()
-    if fid.startswith('1'):
-        return 'no_break'
-    if fid.startswith('2'):
-        return 'forced_break'
-    return 'choice'
-
-
-# ---------------------------------------------------------------------------
 # Helpers — legacy image task
 # ---------------------------------------------------------------------------
 
@@ -516,11 +381,6 @@ def _captcha_live_method(player, data):
 # Helpers — ordered-selection task
 # ---------------------------------------------------------------------------
 
-def _point_in_box(x, y, box):
-    x1, y1, x2, y2 = box
-    return x1 <= x <= x2 and y1 <= y <= y2
-
-
 def _get_ordered_payload(player):
     if player.field_maybe_none('ordered_image_order') is None:
         order = list(range(len(ORDERED_DATA)))
@@ -568,15 +428,6 @@ def _ordered_live_method(player, data):
 # ---------------------------------------------------------------------------
 # Helpers — legacy symbol+image task
 # ---------------------------------------------------------------------------
-
-def _generate_symbol_grid(target_symbol):
-    non_targets = [s for s in range(NUM_SYMBOL_TYPES) if s != target_symbol]
-    grid = [random.choice(non_targets) for _ in range(SYMBOL_GRID_SIZE)]
-    target_cells = random.sample(range(SYMBOL_GRID_SIZE), NUM_TARGETS_IN_GRID)
-    for cell in target_cells:
-        grid[cell] = target_symbol
-    return grid, sorted(target_cells)
-
 
 def _get_symbol_payload(player):
     if player.field_maybe_none('symbol_image_order') is None:
@@ -736,34 +587,6 @@ def _combined_live_method(player, data):
 # ---------------------------------------------------------------------------
 # Helpers — matrix (pure symbol) task
 # ---------------------------------------------------------------------------
-
-def _generate_matrix_task():
-    """Return a new random symbol-matrix trial drawn from PURE_SYMBOL_DATA.
-
-    Target count N is uniformly random in [MATRIX_MIN_TARGETS, MATRIX_MAX_TARGETS].
-    Distractor cells are filled with replacement from non-target symbols so the
-    same distractor can appear multiple times in one grid.
-    """
-    if len(PURE_SYMBOL_DATA) < 2:
-        raise RuntimeError('symbols.csv must have at least 2 rows.')
-    seed = random.randint(0, 2**31 - 1)
-    rng  = random.Random(seed)   # isolated RNG — does not affect global state
-    target      = rng.choice(PURE_SYMBOL_DATA)
-    n_targets   = rng.randint(MATRIX_MIN_TARGETS, MATRIX_MAX_TARGETS)
-    non_targets = [s for s in PURE_SYMBOL_DATA if s['symbol_id'] != target['symbol_id']]
-    grid = [rng.choice(non_targets) for _ in range(MATRIX_GRID_SIZE)]
-    target_positions = rng.sample(range(MATRIX_GRID_SIZE), n_targets)
-    for pos in target_positions:
-        grid[pos] = target
-    correct_cells = sorted(target_positions)
-    return {
-        'target':        {'id': target['symbol_id'], 'latex': target['latex']},
-        'grid':          [{'id': s['symbol_id'], 'latex': s['latex']} for s in grid],
-        'correct_cells': correct_cells,
-        'n_targets':     n_targets,
-        'seed':          seed,
-    }
-
 
 def _matrix_live_method(player, data, block):
     msg_type = data.get('type')
@@ -1353,15 +1176,11 @@ class MatrixPractice(Page):
 
 
 class MatrixStartScreen(Page):
-    """Pre-task reminder screen — participant clicks Start (auto-advances after 20 s)."""
+    """Pre-task reminder screen — participant clicks Start to begin."""
 
     @staticmethod
     def is_displayed(player):
         return player.session.config.get('task_type') == 'matrix'
-
-    @staticmethod
-    def get_timeout_seconds(player):
-        return 20
 
     @staticmethod
     def vars_for_template(player):
@@ -1386,7 +1205,7 @@ class MatrixTask(Page):
     @staticmethod
     def vars_for_template(player):
         player.matrix_start_time = time.time()
-        return {}
+        return {'duration_seconds': _task_duration(player), 'block_label': 'Session 1 of 2'}
 
     @staticmethod
     def live_method(player, data):
@@ -1416,7 +1235,7 @@ class MatrixBridgeTask(Page):
 
     @staticmethod
     def vars_for_template(player):
-        return {}
+        return {'duration_seconds': _break_duration(player), 'block_label': 'Continue working'}
 
     @staticmethod
     def live_method(player, data):
@@ -1438,7 +1257,7 @@ class MatrixTask2(Page):
     @staticmethod
     def vars_for_template(player):
         player.matrix2_start_time = time.time()
-        return {}
+        return {'duration_seconds': _task_duration(player), 'block_label': 'Session 2 of 2'}
 
     @staticmethod
     def live_method(player, data):
@@ -1580,9 +1399,8 @@ page_sequence = [
     OrderedTask,
     SymbolTask,
     CombinedTask,
-    # Matrix task — instructions + practice + real segment 1
+    # Matrix task — instructions (includes free-form demo) + real segment 1
     MatrixInstructions,
-    MatrixPractice,
     MatrixStartScreen,
     MatrixTask,
     # Break

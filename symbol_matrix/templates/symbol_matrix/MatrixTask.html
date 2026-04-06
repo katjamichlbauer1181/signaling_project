@@ -31,7 +31,35 @@
     gap: 6px;
   }
 
-  /* ── Target row ────────────────────────────────────────────────── */
+  /* ── Timer bar ─────────────────────────────────────────────────── */
+  #timer-bar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: #fff;
+    border-radius: 8px;
+    padding: 6px 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    font-size: clamp(.8rem, 2.1vmin, .92rem);
+    font-weight: 600;
+    color: #64748b;
+  }
+  #timer-display {
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(1rem, 2.8vmin, 1.15rem);
+    font-weight: 800;
+    color: #1e293b;
+    transition: color .5s;
+  }
+  #timer-display.warn   { color: #d97706; }
+  #timer-display.urgent { color: #dc2626; }
+
+  button { user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+  button:focus { outline: none; caret-color: transparent; }
+
+  /* ── Target row ─────────────────────────────────────────────────── */
   #target-row {
     flex-shrink: 0;
     display: flex;
@@ -129,6 +157,11 @@
 {{ block content }}
 <div id="shell">
 
+  <div id="timer-bar">
+    <span id="block-label">{{ block_label }}</span>
+    <span id="timer-display">--:--</span>
+  </div>
+
   <div id="target-row">
     <span id="task-prompt">Find all matching symbols in the grid:</span>
     <div id="target-display"></div>
@@ -153,6 +186,21 @@
 var _task  = null;
 var _sel   = new Set();
 var _start = null;
+
+// ── Session countdown ──────────────────────────────────────────
+var _timerEnd = Date.now() + {{ duration_seconds }} * 1000;
+function _updateTimer() {
+  var remaining = Math.max(0, Math.round((_timerEnd - Date.now()) / 1000));
+  var m = Math.floor(remaining / 60);
+  var s = remaining % 60;
+  var el = document.getElementById('timer-display');
+  if (el) {
+    el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+    el.className = remaining <= 30 ? 'urgent' : remaining <= 60 ? 'warn' : '';
+  }
+  if (remaining > 0) setTimeout(_updateTimer, 500);
+}
+document.addEventListener('DOMContentLoaded', _updateTimer);
 
 function rl(latex, dm) {
   try { return katex.renderToString(latex, { displayMode: !!dm, throwOnError: false }); }

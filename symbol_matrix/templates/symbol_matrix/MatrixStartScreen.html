@@ -10,7 +10,7 @@
   body { overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
 
   #start-card {
-    max-width: 520px;
+    max-width: 700px;
     margin: 1rem auto;
     background: #fff;
     border-radius: 12px;
@@ -68,28 +68,10 @@
     100% { box-shadow: 0 0 0 0   rgba(13,110,253,0); }
   }
   #start-btn:active { opacity: .85; }
+  #start-btn:focus  { outline: none; }
 
-  #auto-note {
-    font-size: .8rem;
-    color: #94a3b8;
-  }
-
-  /* Progress bar — drains over 20 s */
-  #bar-track {
-    width: 100%;
-    height: 4px;
-    background: #e2e8f0;
-    border-radius: 2px;
-    margin-top: 12px;
-    overflow: hidden;
-  }
-  #bar-fill {
-    height: 100%;
-    width: 100%;
-    background: #0d6efd;
-    border-radius: 2px;
-    transition: width 20s linear;
-  }
+  button { user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+  button:focus { outline: none; caret-color: transparent; }
 </style>
 {{ endblock }}
 
@@ -137,8 +119,6 @@
   </ul>
 
   <button type="button" id="start-btn">▶&nbsp;&nbsp;Start task</button>
-  <div id="auto-note">Starts automatically in <span id="ctr">20</span> s</div>
-  <div id="bar-track"><div id="bar-fill"></div></div>
 
 </div>
 
@@ -147,35 +127,15 @@
 
 <script>
 (function () {
-  var TOTAL = 20;
-  var remaining = TOTAL;
-
   function advance() {
     var btn = document.querySelector('button[type=submit], input[type=submit]');
     if (btn) { btn.click(); return; }
-    // Fallback: look inside any hidden div
     var hidden = document.querySelector('[style*="display:none"] button, [style*="display:none"] input');
     if (hidden) hidden.click();
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    var ctrEl  = document.getElementById('ctr');
-    var barEl  = document.getElementById('bar-fill');
-    var sBtn   = document.getElementById('start-btn');
-
-    // Drain the bar over 20 s
-    requestAnimationFrame(function () { barEl.style.width = '0%'; });
-
-    var timer = setInterval(function () {
-      remaining--;
-      ctrEl.textContent = remaining;
-      if (remaining <= 0) { clearInterval(timer); advance(); }
-    }, 1000);
-
-    sBtn.addEventListener('click', function () {
-      clearInterval(timer);
-      advance();
-    });
+    document.getElementById('start-btn').addEventListener('click', advance);
   });
 }());
 </script>

@@ -79,7 +79,7 @@
   /* ── Target ────────────────────────────────────────────────────── */
   #demo-target {
     flex-shrink: 0;
-    align-self: flex-start;
+    align-self: center;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -203,6 +203,9 @@
     animation: confirm-pulse .9s infinite;
   }
   #demo-confirm:active { background: #1d4ed8; }
+
+  button { user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+  button:focus { outline: none; caret-color: transparent; }
   @keyframes confirm-pulse {
     0%   { box-shadow: 0 0 0 0   rgba(37,99,235,.7); }
     70%  { box-shadow: 0 0 0 12px rgba(37,99,235,0); }
@@ -239,6 +242,7 @@
     <div class="sdot"     id="d3"></div>
     <div class="sdot"     id="d4"></div>
     <div class="sdot"     id="d5"></div>
+    <div class="sdot"     id="d6"></div>
   </div>
 
   <!-- Condition-specific study structure reminder -->
@@ -335,7 +339,7 @@ function buildCells() {
 }
 
 function setDots(n) {
-  for (var i = 1; i <= 5; i++) {
+  for (var i = 1; i <= 6; i++) {
     var d = document.getElementById('d' + i);
     d.className = 'sdot' + (i < n ? ' done' : i === n ? ' now' : '');
   }
@@ -463,16 +467,75 @@ function step4() {
   });
 }
 
-/* ── Step 5: tap Confirm to finish tutorial ─────────────────── */
+/* ── Step 5: tap Confirm to advance to free-form demo ────────── */
 function step5() {
   setDots(5);
-  setBanner('✅', 'Found them all! Now tap Confirm to continue.');
+  setBanner('✅', 'Found them all! Tap Confirm to try one yourself.');
   showConfirm(true);
 
-  document.getElementById('demo-confirm').addEventListener('click', function() {
+  document.getElementById('demo-confirm').addEventListener('click', function onStep5Confirm() {
+    document.getElementById('demo-confirm').removeEventListener('click', onStep5Confirm);
+    flash(step6);
+  });
+}
+
+/* ── Step 6: free-form demo — no hints, different target ─────── */
+var TARGET2_LATEX = '\\beta';
+var CORRECT2      = [5, 27, 51];
+var DISTRACTORS2  = ['\\zeta','\\eta','\\theta','\\phi','\\psi'];
+
+function buildGrid2() {
+  var g = [];
+  for (var i = 0; i < 64; i++) g.push(DISTRACTORS2[i % DISTRACTORS2.length]);
+  CORRECT2.forEach(function(p) { g[p] = TARGET2_LATEX; });
+  return g;
+}
+var GRID2 = buildGrid2();
+var selected2 = new Set();
+
+function step6() {
+  setDots(6);
+  setBanner('🎯', 'Now try yourself — find all matching symbols and tap Confirm.');
+  selected2 = new Set();
+
+  // Swap target display
+  document.getElementById('demo-target').innerHTML = rl(TARGET2_LATEX, true);
+
+  // Rebuild grid
+  var container = document.getElementById('demo-grid');
+  container.innerHTML = '';
+  cells = [];
+  GRID2.forEach(function(latex, idx) {
+    (function(i, ltx) {
+      var c = document.createElement('div');
+      c.className = 'dcell';
+      c.innerHTML = rl(ltx, false);
+      c.addEventListener('click', function() {
+        if (selected2.has(i)) {
+          selected2.delete(i);
+          c.classList.remove('selected');
+        } else {
+          selected2.add(i);
+          c.classList.add('selected');
+        }
+        showConfirm(selected2.size > 0);
+      });
+      cells.push(c);
+      container.appendChild(c);
+    })(idx, latex);
+  });
+
+  document.getElementById('found-dots').classList.remove('show');
+  document.getElementById('demo-grid').classList.remove('dim');
+  showConfirm(false);
+
+  document.getElementById('demo-confirm').addEventListener('click', function onDone() {
+    document.getElementById('demo-confirm').removeEventListener('click', onDone);
     var real = document.querySelector('#real-next button, #real-next input[type=submit]');
     if (real) real.click();
   });
+
+  requestAnimationFrame(sizeGrid);
 }
 
 /* ── Init ────────────────────────────────────────────────────── */
